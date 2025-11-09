@@ -260,3 +260,7 @@ coverage.xml
 
 # Yarn Integrity file
 .yarn-integrity
+
+
+# Specfic folders
+test_audio_files/
