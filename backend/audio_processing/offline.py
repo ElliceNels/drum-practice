@@ -13,6 +13,7 @@ class OfflineAudioProcessor:
 
     SAMPLE_RATE: int = 22050
     model: BeatNet = BeatNet(mode="offline", model=1, inference_model='DBN')
+    BPM_threshold: float = 5.0
 
     @staticmethod
     def load_audio(file_path: str) -> np.ndarray:
@@ -89,12 +90,49 @@ class OfflineAudioProcessor:
         """
         return (beat_times[:-1] + beat_times[1:]) / 2
 
+    @staticmethod
+    def calculate_statistics(bpm_array: np.ndarray, bpm: float) -> dict:
+        """
+        Calculate tempo stability statistics based on a target BPM
+
+        Args:
+            bpm_array (np.ndarray): Instantaneous BPM values.
+            target_bpm (float): The intended BPM of the song/performance.
+
+        Returns:
+            dict: Dictionary containing tempo stability metrics.
+        """
+
+        median_bpm = float(np.median(bpm_array))
+        std_bpm = float(np.std(bpm_array))
+        cv = (std_bpm / bpm) * 100
+        bpm_min, bpm_max = float(np.min(bpm_array)), float(np.max(bpm_array))
+
+        deviation = np.abs(bpm_array - bpm)
+        within_mask = deviation <= OfflineAudioProcessor.BPM_threshold
+        percentage = (np.sum(within_mask) / len(bpm_array)) * 100
+        # TODO: Convert to DTO format
+        return {
+            "target_bpm": bpm,
+            "median_bpm": median_bpm,
+            "bpm_min": bpm_min,
+            "bpm_max": bpm_max,
+            "std_dev": std_bpm,
+            "variance_coefficient": cv,
+            "percentage_within_threshold": percentage,
+        }
+
 # Example usage
 if __name__ == "__main__":
-    AUDIO_PATH = "..\\test_audio_files\\guns_n_ships.wav"
+    AUDIO_PATH = "test_audio_files\\iris_152.wav"
     ap = OfflineAudioProcessor()
     data = ap.load_audio(AUDIO_PATH)
     bts, dbs = ap.analyze_audio(data)
     mean = ap.calculate_mean_tempo(bts)
     array = ap.calculate_bpm_array(bts)
     time_mids = ap.calculate_time_midpoints(bts)
+
+    stats = ap.calculate_statistics(array, bpm=152.0)
+    tstats = ap.calculate_statistics(array, bpm=mean)
+    print("BPM Statistics:", stats)
+    print("Target BPM Statistics:", tstats)
