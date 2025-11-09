@@ -88,7 +88,7 @@ class OfflineAudioProcessor:
 if __name__ == "__main__":
     AUDIO_PATH = "..\\test_audio_files\\guns_n_ships.wav"
     ap = OfflineAudioProcessor()
-    data, sr = ap.load_audio(AUDIO_PATH)
+    data = ap.load_audio(AUDIO_PATH)
     bts, dbs = ap.analyze_audio(data)
     mean = ap.calculate_mean_tempo(bts)
     array = ap.calculate_bpm_array(bts)
