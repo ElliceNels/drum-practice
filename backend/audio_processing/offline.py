@@ -33,7 +33,7 @@ class OfflineAudioProcessor:
         Analyzes an audio file to extract both beats and tempo.
 
         Args:
-            file_path (str): Path to the audio file.
+            audio_data (np.ndarray): Audio time series data to analyze.
         Returns:
             tuple: A tuple containing:
                 - beat_times (list): List of detected beat times in seconds.
@@ -56,6 +56,8 @@ class OfflineAudioProcessor:
         Returns:
             float: Calculated tempo in BPM.
         """
+        if len(beat_times) < 2:
+            raise ValueError("At least two beat times are required to calculate mean tempo.")
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
 
     @staticmethod
@@ -69,7 +71,10 @@ class OfflineAudioProcessor:
             np.ndarray: Array of BPM values corresponding to each beat interval.
         """
         ibi: np.ndarray = np.diff(beat_times)
-        inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / ibi
+        # Filter out zero or near-zero intervals to avoid division by zero
+        epsilon = 1e-6
+        valid_ibi = ibi[ibi > epsilon]
+        inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
         return inst_bpm_array
 
     @staticmethod
