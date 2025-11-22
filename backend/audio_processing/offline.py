@@ -25,6 +25,11 @@ class OfflineAudioProcessor:
     """
 
     SAMPLE_RATE: int = 22050
+    # Weights for combining individual scores into final rank, must sum to 1.0
+    ACCURACY_WEIGHT: float = 0.35
+    CONSISTENCY_WEIGHT: float = 0.25
+    STABILITY_WEIGHT: float = 0.15
+    THRESHOLD_WEIGHT: float = 0.25
 
     def __init__(
             self,
@@ -181,6 +186,9 @@ class OfflineAudioProcessor:
         # Consistency: Coefficient of Variation (CV) of BPM, beat to beat jitter
         # Threshold: Percentage of beats within allowed timing window
 
+        if target_bpm <= 0:
+            raise ValueError("target_bpm must be greater than zero to compute accuracy score.")
+
         # Normalise metrics into quality scores (0 = bad, 1 = excellent)
         accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
         accuracy_score = 1 - np.clip(accuracy_error / self.accuracy_floor, 0, 1)
@@ -216,10 +224,10 @@ class OfflineAudioProcessor:
                 - description (str): Description of the skill tier.
         """
         combined = (
-            accuracy * 0.35 +
-            consistency * 0.25 +
-            stability * 0.15 +
-            threshold * 0.25
+            OfflineAudioProcessor.ACCURACY_WEIGHT * accuracy +
+            OfflineAudioProcessor.CONSISTENCY_WEIGHT * consistency +
+            OfflineAudioProcessor.STABILITY_WEIGHT * stability +
+            OfflineAudioProcessor.THRESHOLD_WEIGHT * threshold
         )
 
         # Convert 0–1 score into 1–10 rank
