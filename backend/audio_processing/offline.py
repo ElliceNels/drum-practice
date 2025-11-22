@@ -33,7 +33,9 @@ class OfflineAudioProcessor:
             stability_floor: float = 20.0,
             consistency_floor: float = 0.18
         ):
-        """Initializes the OfflineAudioProcessor with BeatNet model and parameters.
+        """
+        Initializes the OfflineAudioProcessor with BeatNet model and parameters.
+
         Args:
             bpm_threshold (float): Allowed BPM deviation for threshold calculations.
             accuracy_floor (float): Floor value for accuracy score normalization.
@@ -86,7 +88,6 @@ class OfflineAudioProcessor:
 
         Args:
             beat_times (np.ndarray): Array of detected beat times in seconds.
-
         Returns:
             float: Calculated tempo in BPM.
         """
@@ -126,12 +127,11 @@ class OfflineAudioProcessor:
 
     def calculate_statistics(self, bpm_array: np.ndarray, target_bpm: float) -> dict:
         """
-        Calculate tempo stability statistics based on a target BPM
+        Calculate tempo stability statistics based on a target BPM.
 
         Args:
             bpm_array (np.ndarray): Instantaneous BPM values.
             target_bpm (float): The intended BPM of the song/performance.
-
         Returns:
             dict: Dictionary containing tempo stability metrics.
         """
@@ -164,7 +164,8 @@ class OfflineAudioProcessor:
             percentage: float,
             target_bpm: float
         ) -> dict:
-        """Calculate quality scores based on tempo statistics.
+        """
+        Calculate quality scores based on tempo statistics.
 
         Args:
             mean_bpm (float): Mean BPM value
@@ -230,7 +231,7 @@ class OfflineAudioProcessor:
 
     def performance_to_rank(self, bpm_array: np.ndarray, target_bpm: float) -> tuple:
         """
-        Calculate performance rank directly from BPM array and target BPM. Convenience wrapper.
+        Convenience method that calculates statistics, scores, and rank from BPM data.
 
         Args:
             bpm_array (np.ndarray): Instantaneous BPM values.
