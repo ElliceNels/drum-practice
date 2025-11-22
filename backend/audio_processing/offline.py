@@ -128,17 +128,11 @@ levels of rhythmic performance.
             candidates: np.ndarray = np.array([bpm, bpm / 2, bpm * 2])
             # Filter candidates to realistic BPM range
             realistic_candidates = candidates[
-                (candidates >= MIN_REALISTIC_BPM) & (candidates <= MAX_REALISTIC_BPM)
-            ]
-            # Choose whichever is closest to the global median
-            if len(realistic_candidates) > 0:
-                best: float = realistic_candidates[np.argmin(np.abs(realistic_candidates - median))]
-            else:
-                best: float = bpm  # Keep original if no realistic candidates
-            corrected.append(best)
-
-        return np.array(corrected)
-
+        candidates = np.stack([bpm_array, bpm_array / 2, bpm_array * 2], axis=1)
+        distances = np.abs(candidates - median)
+        best_indices = np.argmin(distances, axis=1)
+        corrected = candidates[np.arange(len(bpm_array)), best_indices]
+        return corrected
     @staticmethod
     def _moving_average(bpm_array: np.ndarray, window_size: int = 5) -> np.ndarray:
         """
@@ -159,18 +153,21 @@ levels of rhythmic performance.
         Apply median filtering to BPM array.
         Args:
             bpm_array (np.ndarray): Array of BPM values.
-            kernel_size (int): Size of the median filter kernel.
+            kernel_size (int): Size of the median filter kernel. Must be odd.
         Returns:
             np.ndarray: Smoothed BPM array.
+        Raises:
+            ValueError: If kernel_size is not odd.
         """
         if len(bpm_array) < kernel_size:
             return bpm_array
+        if kernel_size % 2 == 0:
+            raise ValueError("kernel_size must be odd for median filtering")
         return medfilt(bpm_array, kernel_size=kernel_size)
-
     @staticmethod
     def calculate_bpm_array(beat_times: np.ndarray) -> np.ndarray:
         """
-        Calculate instantaneous BPM array from beat times, only realistic inter-beat intervals.
+        Calculate instantaneous BPM array from beat times by filtering only realistic inter-beat intervals.
 
         Args:
             beat_times (np.ndarray): Array of detected beat times in seconds.
@@ -188,8 +185,11 @@ levels of rhythmic performance.
         max_ibi_threshold = SECONDS_IN_MINUTE / MIN_REALISTIC_BPM  # seconds
         valid_ibi = valid_ibi[(valid_ibi < max_ibi_threshold) & (valid_ibi > min_ibi_threshold)]
 
-        if len(valid_ibi) < 2:
-            raise ValueError("Not enough valid inter-beat intervals to calculate BPM array.")
+        if len(valid_ibi) < 1:
+            raise ValueError(
+                "Not enough valid inter-beat intervals within the realistic BPM range "
+                f"({MIN_REALISTIC_BPM}-{MAX_REALISTIC_BPM} BPM) to calculate BPM array."
+            )
         inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
 
         # 3. Half-time and double-time correction
