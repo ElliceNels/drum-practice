@@ -40,6 +40,7 @@ class OfflineAudioProcessor:
         ):
         """
         Initializes the OfflineAudioProcessor with BeatNet model and parameters.
+        These parameters have been derived from empirical testing.
 
         Args:
             bpm_threshold (float): Allowed BPM deviation for threshold calculations.
@@ -140,7 +141,8 @@ class OfflineAudioProcessor:
         Returns:
             dict: Dictionary containing tempo stability metrics.
         """
-
+        if target_bpm <= 0:
+            raise ValueError("target_bpm must be greater than zero to calculate statistics.")
         median_bpm = float(np.median(bpm_array))
         std_bpm = float(np.std(bpm_array))
         cv = (std_bpm / target_bpm) * 100
