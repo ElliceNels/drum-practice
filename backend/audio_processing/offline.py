@@ -197,12 +197,12 @@ levels of rhythmic performance.
 
         # 4. Median Window Smoothing
         smoothed_bpm_array = OfflineAudioProcessor._median_smooth(
-            corrected_bpm_array, kernel_size=3 # 3 For light smoothing
+            corrected_bpm_array, kernel_size=3 # 3 for light smoothing
         )
 
         # 5. Moving Average Smoothing
         averaged_bpm_array = OfflineAudioProcessor._moving_average(
-            smoothed_bpm_array, window_size=5 # 5 For moderate smoothing
+            smoothed_bpm_array, window_size=5 # 5 for moderate smoothing
         )
 
         return averaged_bpm_array
