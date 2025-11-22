@@ -3,8 +3,11 @@
 from BeatNet.BeatNet import BeatNet
 import librosa
 import numpy as np
+from scipy.signal import medfilt
 
 SECONDS_IN_MINUTE: int = 60
+MAX_REALISTIC_BPM: int = 300
+MIN_REALISTIC_BPM: int = 40
 SKILL_TIERS = {
     10: "Perfect / Machine-like",
     9:  "Extremely tight",
@@ -50,14 +53,6 @@ levels of rhythmic performance.
             stability_floor (float): Floor value for stability score normalization.
             consistency_floor (float): Floor value for consistency score normalization.
         """
-        if not round(
-            OfflineAudioProcessor.ACCURACY_WEIGHT +
-            OfflineAudioProcessor.CONSISTENCY_WEIGHT +
-            OfflineAudioProcessor.STABILITY_WEIGHT +
-            OfflineAudioProcessor.THRESHOLD_WEIGHT
-        ) != 1:
-            raise ValueError("Score weights must sum to 1.0")
-
         self.model: BeatNet = BeatNet(
             mode="offline", model=1, inference_model='DBN')
         self.bpm_threshold: float = bpm_threshold
@@ -113,9 +108,61 @@ levels of rhythmic performance.
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
 
     @staticmethod
+    def _correct_half_double_time(bpm_array: np.ndarray):
+        """
+        Correct BPM array for half-time and double-time errors.
+
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+        Returns:
+            np.ndarray: Corrected BPM array.
+        """
+        if len(bpm_array) == 0:
+            return bpm_array
+
+        median: float = np.median(bpm_array)
+        candidates = np.stack([bpm_array, bpm_array / 2, bpm_array * 2], axis=1)
+        distances = np.abs(candidates - median)
+        best_indices = np.argmin(distances, axis=1)
+        corrected = candidates[np.arange(len(bpm_array)), best_indices]
+        return corrected
+
+    @staticmethod
+    def _moving_average(bpm_array: np.ndarray, window_size: int = 5) -> np.ndarray:
+        """
+        Apply moving average smoothing to BPM array.
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+            window_size (int): Size of the moving average window.
+        Returns:
+            np.ndarray: Smoothed BPM array.
+        """
+        if len(bpm_array) < window_size:
+            return bpm_array
+        return np.convolve(bpm_array, np.ones(window_size) / window_size, mode="same")
+
+    @staticmethod
+    def _median_smooth(bpm_array: np.ndarray, kernel_size: int = 3) -> np.ndarray:
+        """
+        Apply median filtering to BPM array.
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+            kernel_size (int): Size of the median filter kernel. Must be odd.
+        Returns:
+            np.ndarray: Smoothed BPM array.
+        Raises:
+            ValueError: If kernel_size is not odd.
+        """
+        if len(bpm_array) < kernel_size:
+            return bpm_array
+        if kernel_size % 2 == 0:
+            raise ValueError("kernel_size must be odd for median filtering")
+        return medfilt(bpm_array, kernel_size=kernel_size)
+
+    @staticmethod
     def calculate_bpm_array(beat_times: np.ndarray) -> np.ndarray:
         """
-        Calculate instantaneous BPM array from beat times.
+        Calculate instantaneous BPM array from beat times by filtering only realistic inter-beat intervals.
 
         Args:
             beat_times (np.ndarray): Array of detected beat times in seconds.
@@ -123,11 +170,37 @@ levels of rhythmic performance.
             np.ndarray: Array of BPM values corresponding to each beat interval.
         """
         ibi: np.ndarray = np.diff(beat_times)
-        # Filter out zero or near-zero intervals to avoid division by zero
+
+        # 1. Filter out zero or near-zero intervals to avoid division by zero
         epsilon = 1e-6
         valid_ibi = ibi[ibi > epsilon]
+
+        # 2. Filter out unreasonably large intervals
+        min_ibi_threshold = SECONDS_IN_MINUTE / MAX_REALISTIC_BPM  # seconds
+        max_ibi_threshold = SECONDS_IN_MINUTE / MIN_REALISTIC_BPM  # seconds
+        valid_ibi = valid_ibi[(valid_ibi < max_ibi_threshold) & (valid_ibi > min_ibi_threshold)]
+
+        if len(valid_ibi) < 1:
+            raise ValueError(
+                "Not enough valid inter-beat intervals within the realistic BPM range "
+                f"({MIN_REALISTIC_BPM}-{MAX_REALISTIC_BPM} BPM) to calculate BPM array."
+            )
         inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
-        return inst_bpm_array
+
+        # 3. Half-time and double-time correction
+        corrected_bpm_array = OfflineAudioProcessor._correct_half_double_time(inst_bpm_array)
+
+        # 4. Median Window Smoothing
+        smoothed_bpm_array = OfflineAudioProcessor._median_smooth(
+            corrected_bpm_array, kernel_size=3 # 3 for light smoothing
+        )
+
+        # 5. Moving Average Smoothing
+        averaged_bpm_array = OfflineAudioProcessor._moving_average(
+            smoothed_bpm_array, window_size=5 # 5 for moderate smoothing
+        )
+
+        return averaged_bpm_array
 
     @staticmethod
     def calculate_time_midpoints(beat_times: np.ndarray) -> np.ndarray:
@@ -152,7 +225,7 @@ levels of rhythmic performance.
             dict: Dictionary containing tempo stability metrics.
         """
         if len(bpm_array) == 0:
-            raise ValueError("bpm_array must contain at least one BPM value to calculate statistics.")
+            raise ValueError("Array must contain at least one BPM value to calculate statistics.")
         if target_bpm <= 0:
             raise ValueError("target_bpm must be greater than zero to calculate statistics.")
         median_bpm = float(np.median(bpm_array))
