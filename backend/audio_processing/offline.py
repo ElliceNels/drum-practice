@@ -3,6 +3,7 @@
 from BeatNet.BeatNet import BeatNet
 import librosa
 import numpy as np
+from scipy.signal import medfilt
 
 SECONDS_IN_MINUTE: int = 60
 SKILL_TIERS = {
@@ -103,6 +104,59 @@ levels of rhythmic performance.
             raise ValueError(
                 "At least two beat times are required to calculate mean tempo.")
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
+
+    @staticmethod
+    def _correct_half_double_time(bpm_array):
+        """
+        Correct BPM array for half-time and double-time errors.
+
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+        Returns:
+            np.ndarray: Corrected BPM array.
+        """
+        if len(bpm_array) == 0:
+            return bpm_array
+
+        median: float = np.median(bpm_array)
+        corrected: list[float] = []
+
+        for bpm in bpm_array:
+            # Candidates: original, half, double
+            candidates: np.ndarray = np.array([bpm, bpm / 2, bpm * 2])
+            # Choose whichever is closest to the global median
+            best: float = candidates[np.argmin(np.abs(candidates - median))]
+            corrected.append(best)
+
+        return np.array(corrected)
+
+    @staticmethod
+    def _moving_average(bpm_array: np.ndarray, window_size: int = 5) -> np.ndarray:
+        """
+        Apply moving average smoothing to BPM array.
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+            window_size (int): Size of the moving average window.
+        Returns:
+            np.ndarray: Smoothed BPM array.
+        """
+        if len(bpm_array) < window_size:
+            return bpm_array
+        return np.convolve(bpm_array, np.ones(window_size) / window_size, mode="same")
+
+    @staticmethod
+    def _median_smooth(bpm_array: np.ndarray, kernel_size: int = 3) -> np.ndarray:
+        """
+        Apply median filtering to BPM array.
+        Args:
+            bpm_array (np.ndarray): Array of BPM values.
+            kernel_size (int): Size of the median filter kernel.
+        Returns:
+            np.ndarray: Smoothed BPM array.
+        """
+        if len(bpm_array) < kernel_size:
+            return bpm_array
+        return medfilt(bpm_array, kernel_size=kernel_size)
 
     @staticmethod
     def calculate_bpm_array(beat_times: np.ndarray) -> np.ndarray:
