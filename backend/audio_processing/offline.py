@@ -50,14 +50,6 @@ levels of rhythmic performance.
             stability_floor (float): Floor value for stability score normalization.
             consistency_floor (float): Floor value for consistency score normalization.
         """
-        if not round(
-            OfflineAudioProcessor.ACCURACY_WEIGHT +
-            OfflineAudioProcessor.CONSISTENCY_WEIGHT +
-            OfflineAudioProcessor.STABILITY_WEIGHT +
-            OfflineAudioProcessor.THRESHOLD_WEIGHT
-        ) != 1:
-            raise ValueError("Score weights must sum to 1.0")
-
         self.model: BeatNet = BeatNet(
             mode="offline", model=1, inference_model='DBN')
         self.bpm_threshold: float = bpm_threshold
