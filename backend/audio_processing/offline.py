@@ -40,9 +40,9 @@ class OfflineAudioProcessor:
         ):
         """
         Initializes the OfflineAudioProcessor with BeatNet model and parameters.
-        These parameters have been derived from empirical testing with a variety of musical recordings.
-        These thresholds were found to provide reasonable discrimination between different 
-        levels of rhythmic performance.
+These parameters have been derived from empirical testing with a variety of musical recordings.
+These thresholds were found to provide reasonable discrimination between different 
+levels of rhythmic performance.
 
         Args:
             bpm_threshold (float): Allowed BPM deviation for threshold calculations.
@@ -50,12 +50,12 @@ class OfflineAudioProcessor:
             stability_floor (float): Floor value for stability score normalization.
             consistency_floor (float): Floor value for consistency score normalization.
         """
-        if (
+        if not round(
             OfflineAudioProcessor.ACCURACY_WEIGHT +
             OfflineAudioProcessor.CONSISTENCY_WEIGHT +
             OfflineAudioProcessor.STABILITY_WEIGHT +
             OfflineAudioProcessor.THRESHOLD_WEIGHT
-        ) != 1.0:
+        ) != 1:
             raise ValueError("Score weights must sum to 1.0")
 
         self.model: BeatNet = BeatNet(
@@ -194,17 +194,17 @@ class OfflineAudioProcessor:
             target_bpm (float): Target BPM value
         Returns:
             dict: Dictionary containing accuracy, stability, consistency, and threshold scores.
-            Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excellent.
+Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excellent.
         """
         # Accuracy: BPM error relative to target tempo
-        # Stability: Standard deviation of BPM, overall long-term steadiness
-        # Consistency: Coefficient of Variation (CV) of BPM, beat-to-beat jitter
+        # Stability: Standard deviation of BPM, overall longterm steadiness
+        # Consistency: Coefficient of Variation (CV) of BPM, beat to beat jitter
         # Threshold: Percentage of beats within allowed timing window
 
         if target_bpm <= 0:
             raise ValueError("target_bpm must be greater than zero to compute accuracy score.")
 
-        # Normalize metrics into quality scores (0 = bad, 1 = excellent)
+        # Normalise metrics into quality scores (0 = bad, 1 = excellent)
         accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
         accuracy_score = 1 - np.clip(accuracy_error / self.accuracy_floor, 0, 1)
         stability_score = 1 - np.clip(std_dev / self.stability_floor, 0, 1)
