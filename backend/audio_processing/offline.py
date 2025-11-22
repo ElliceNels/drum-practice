@@ -108,7 +108,7 @@ levels of rhythmic performance.
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
 
     @staticmethod
-    def _correct_half_double_time(bpm_array):
+    def _correct_half_double_time(bpm_array: np.ndarray):
         """
         Correct BPM array for half-time and double-time errors.
 
@@ -126,8 +126,15 @@ levels of rhythmic performance.
         for bpm in bpm_array:
             # Candidates: original, half, double
             candidates: np.ndarray = np.array([bpm, bpm / 2, bpm * 2])
+            # Filter candidates to realistic BPM range
+            realistic_candidates = candidates[
+                (candidates >= MIN_REALISTIC_BPM) & (candidates <= MAX_REALISTIC_BPM)
+            ]
             # Choose whichever is closest to the global median
-            best: float = candidates[np.argmin(np.abs(candidates - median))]
+            if len(realistic_candidates) > 0:
+                best: float = realistic_candidates[np.argmin(np.abs(realistic_candidates - median))]
+            else:
+                best: float = bpm  # Keep original if no realistic candidates
             corrected.append(best)
 
         return np.array(corrected)
