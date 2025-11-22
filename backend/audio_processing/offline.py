@@ -121,18 +121,12 @@ levels of rhythmic performance.
             return bpm_array
 
         median: float = np.median(bpm_array)
-        corrected: list[float] = []
-
-        for bpm in bpm_array:
-            # Candidates: original, half, double
-            candidates: np.ndarray = np.array([bpm, bpm / 2, bpm * 2])
-            # Filter candidates to realistic BPM range
-            realistic_candidates = candidates[
         candidates = np.stack([bpm_array, bpm_array / 2, bpm_array * 2], axis=1)
         distances = np.abs(candidates - median)
         best_indices = np.argmin(distances, axis=1)
         corrected = candidates[np.arange(len(bpm_array)), best_indices]
         return corrected
+
     @staticmethod
     def _moving_average(bpm_array: np.ndarray, window_size: int = 5) -> np.ndarray:
         """
