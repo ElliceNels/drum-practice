@@ -183,18 +183,16 @@ class OfflineAudioProcessor:
 
         # Normalise metrics into quality scores (0 = bad, 1 = excellent)
         accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
-        accuracy_score = 1 - \
-            np.clip(accuracy_error / self.accuracy_floor, 0, 1)
+        accuracy_score = 1 - np.clip(accuracy_error / self.accuracy_floor, 0, 1)
         stability_score = 1 - np.clip(std_dev / self.stability_floor, 0, 1)
-        consistency_score = 1 - \
-            np.clip((cv / 100) / self.consistency_floor, 0, 1)
+        consistency_score = 1 - np.clip((cv / 100) / self.consistency_floor, 0, 1)
         threshold_score = percentage / 100.0
 
         return {
-            "accuracy_score": accuracy_score,
-            "stability_score": stability_score,
-            "consistency_score": consistency_score,
-            "threshold_score": threshold_score
+            "accuracy_score": float(accuracy_score),
+            "stability_score": float(stability_score),
+            "consistency_score": float(consistency_score),
+            "threshold_score": float(threshold_score)
         }
 
     @staticmethod
