@@ -6,6 +6,8 @@ import numpy as np
 from scipy.signal import medfilt
 
 SECONDS_IN_MINUTE: int = 60
+MAX_REALISTIC_BPM: int = 300
+MIN_REALISTIC_BPM: int = 40
 SKILL_TIERS = {
     10: "Perfect / Machine-like",
     9:  "Extremely tight",
@@ -161,7 +163,7 @@ levels of rhythmic performance.
     @staticmethod
     def calculate_bpm_array(beat_times: np.ndarray) -> np.ndarray:
         """
-        Calculate instantaneous BPM array from beat times.
+        Calculate instantaneous BPM array from beat times, only realistic inter-beat intervals.
 
         Args:
             beat_times (np.ndarray): Array of detected beat times in seconds.
@@ -169,11 +171,34 @@ levels of rhythmic performance.
             np.ndarray: Array of BPM values corresponding to each beat interval.
         """
         ibi: np.ndarray = np.diff(beat_times)
-        # Filter out zero or near-zero intervals to avoid division by zero
+
+        # 1. Filter out zero or near-zero intervals to avoid division by zero
         epsilon = 1e-6
         valid_ibi = ibi[ibi > epsilon]
+
+        # 2. Filter out unreasonably large intervals
+        min_ibi_threshold = SECONDS_IN_MINUTE / MAX_REALISTIC_BPM  # seconds
+        max_ibi_threshold = SECONDS_IN_MINUTE / MIN_REALISTIC_BPM  # seconds
+        valid_ibi = valid_ibi[(valid_ibi < max_ibi_threshold) & (valid_ibi > min_ibi_threshold)]
+
+        if len(valid_ibi) < 2:
+            raise ValueError("Not enough valid inter-beat intervals to calculate BPM array.")
         inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
-        return inst_bpm_array
+
+        # 3. Half-time and double-time correction
+        corrected_bpm_array = OfflineAudioProcessor._correct_half_double_time(inst_bpm_array)
+
+        # 4. Median Window Smoothing
+        smoothed_bpm_array = OfflineAudioProcessor._median_smooth(
+            corrected_bpm_array, kernel_size=3 # 3 For light smoothing
+        )
+
+        # 5. Moving Average Smoothing
+        averaged_bpm_array = OfflineAudioProcessor._moving_average(
+            smoothed_bpm_array, window_size=5 # 5 For moderate smoothing
+        )
+
+        return averaged_bpm_array
 
     @staticmethod
     def calculate_time_midpoints(beat_times: np.ndarray) -> np.ndarray:
