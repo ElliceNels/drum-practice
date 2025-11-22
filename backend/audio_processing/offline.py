@@ -5,6 +5,18 @@ import librosa
 import numpy as np
 
 SECONDS_IN_MINUTE: int = 60
+SKILL_TIERS = {
+    10: "Perfect / Machine-like",
+    9:  "Extremely tight",
+    8:  "Very tight",
+    7:  "Tight",
+    6:  "Pretty solid",
+    5:  "Average",
+    4:  "Loose",
+    3:  "Very loose",
+    2:  "Unsteady",
+    1:  "Erratic",
+}
 
 class OfflineAudioProcessor:
     """
@@ -13,7 +25,11 @@ class OfflineAudioProcessor:
 
     SAMPLE_RATE: int = 22050
     model: BeatNet = BeatNet(mode="offline", model=1, inference_model='DBN')
-    BPM_threshold: float = 5.0
+    BPM_threshold: float = 10.0
+
+    ACCURACY_FLOOR: float = 0.10 # 10% BPM deviation allowed
+    STABILITY_FLOOR: float = 20.0 # 20 BPM std deviation allowed
+    CONSISTENCY_FLOOR: float = 0.18 # 18% CV allowed
 
     @staticmethod
     def load_audio(file_path: str) -> np.ndarray:
@@ -91,7 +107,7 @@ class OfflineAudioProcessor:
         return (beat_times[:-1] + beat_times[1:]) / 2
 
     @staticmethod
-    def calculate_statistics(bpm_array: np.ndarray, bpm: float) -> dict:
+    def calculate_statistics(bpm_array: np.ndarray, target_bpm: float) -> dict:
         """
         Calculate tempo stability statistics based on a target BPM
 
@@ -105,15 +121,16 @@ class OfflineAudioProcessor:
 
         median_bpm = float(np.median(bpm_array))
         std_bpm = float(np.std(bpm_array))
-        cv = (std_bpm / bpm) * 100
+        cv = (std_bpm / target_bpm) * 100
         bpm_min, bpm_max = float(np.min(bpm_array)), float(np.max(bpm_array))
 
-        deviation = np.abs(bpm_array - bpm)
+        deviation = np.abs(bpm_array - target_bpm)
         within_mask = deviation <= OfflineAudioProcessor.BPM_threshold
         percentage = (np.sum(within_mask) / len(bpm_array)) * 100
-        # TODO: Convert to DTO format
+        # TODO: Convert to DTO format when used
         return {
-            "target_bpm": bpm,
+            "target_bpm": target_bpm,
+            "mean_bpm": float(np.mean(bpm_array)),
             "median_bpm": median_bpm,
             "bpm_min": bpm_min,
             "bpm_max": bpm_max,
@@ -122,17 +139,90 @@ class OfflineAudioProcessor:
             "percentage_within_threshold": percentage,
         }
 
-# Example usage
-if __name__ == "__main__":
-    AUDIO_PATH = "test_audio_files\\iris_152.wav"
-    ap = OfflineAudioProcessor()
-    data = ap.load_audio(AUDIO_PATH)
-    bts, dbs = ap.analyze_audio(data)
-    mean = ap.calculate_mean_tempo(bts)
-    array = ap.calculate_bpm_array(bts)
-    time_mids = ap.calculate_time_midpoints(bts)
+    @staticmethod
+    def calculate_scores(mean_bpm: float, std_dev: float, cv: float, percentage: float, target_bpm: float) -> dict:
+        """Calculate quality scores based on tempo statistics.
 
-    stats = ap.calculate_statistics(array, bpm=152.0)
-    tstats = ap.calculate_statistics(array, bpm=mean)
-    print("BPM Statistics:", stats)
-    print("Target BPM Statistics:", tstats)
+        Args:
+            mean_bpm (float): Mean BPM value
+            std_dev (float): Standard deviation of BPM
+            cv (float): Coefficient of variation of BPM
+            percentage (float): Percentage of BPM values within threshold
+            target_bpm (float): Target BPM value
+        Returns:
+            dict: Dictionary containing accuracy, stability, consistency, and threshold scores.
+        """
+        # Accuracy: BPM error relative to target tempo
+        # Stability: Standard deviation of BPM, overall longterm steadiness
+        # Consistency: Coefficient of Variation (CV) of BPM, beat to beat jitter
+        # Threshold: Percentage of beats within allowed timing window
+
+        # Normalise metrics into quality scores (0 = bad, 1 = excellent)
+        accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
+        accuracy_score = 1 - np.clip(accuracy_error / OfflineAudioProcessor.ACCURACY_FLOOR, 0, 1)
+        stability_score = 1 - np.clip(std_dev / OfflineAudioProcessor.STABILITY_FLOOR, 0, 1)
+        consistency_score = 1 - np.clip((cv / 100) / OfflineAudioProcessor.CONSISTENCY_FLOOR, 0, 1)
+        threshold_score = percentage / 100.0
+
+        return {
+            "accuracy_score": accuracy_score,
+            "stability_score": stability_score,
+            "consistency_score": consistency_score,
+            "threshold_score": threshold_score
+        }
+
+    @staticmethod
+    def scores_to_rank(accuracy: float, stability: float, consistency: float, threshold: float) -> tuple:
+        """
+        Create a performance rank from individual score components.
+
+        Args:
+            accuracy (float): Accuracy score (0 to 1).
+            stability (float): Stability score (0 to 1).
+            consistency (float): Consistency score (0 to 1).
+            threshold (float): Threshold score (0 to 1).
+        Returns:
+            tuple: A tuple containing:
+                - rank (int): Performance rank from 1 to 10.
+                - description (str): Description of the skill tier.
+        """
+        combined = (
+            accuracy * 0.35 +
+            consistency * 0.25 +
+            stability * 0.15 +
+            threshold * 0.25
+        )
+
+        # Convert 0–1 score into 1–10 rank
+        rank = int(round(combined * 9)) + 1
+        final_rank = max(1, min(10, rank))
+        return final_rank, SKILL_TIERS[final_rank]
+
+    @staticmethod
+    def performance_to_rank(bpm_array: np.ndarray, target_bpm: float) -> tuple:
+        """
+        Calculate performance rank directly from BPM array and target BPM. A wrapper for convenience.
+
+        Args:
+            bpm_array (np.ndarray): Instantaneous BPM values.
+            target_bpm (float): The intended BPM of the song/performance.
+        Returns:
+            tuple: A tuple containing:
+                - rank (int): Performance rank from 1 to 10.
+                - description (str): Description of the skill tier.
+        """
+        stats = OfflineAudioProcessor.calculate_statistics(bpm_array, target_bpm)
+        scores = OfflineAudioProcessor.calculate_scores(
+            mean_bpm=stats["mean_bpm"],
+            std_dev=stats["std_dev"],
+            cv=stats["variance_coefficient"],
+            percentage=stats["percentage_within_threshold"],
+            target_bpm=stats["target_bpm"]
+        )
+        rank = OfflineAudioProcessor.scores_to_rank(
+            accuracy=scores["accuracy_score"],
+            stability=scores["stability_score"],
+            consistency=scores["consistency_score"],
+            threshold=scores["threshold_score"]
+        )
+        return rank
