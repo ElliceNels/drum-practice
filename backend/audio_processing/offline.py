@@ -223,7 +223,7 @@ levels of rhythmic performance.
             dict: Dictionary containing tempo stability metrics.
         """
         if len(bpm_array) == 0:
-            raise ValueError("bpm_array must contain at least one BPM value to calculate statistics.")
+            raise ValueError("Array must contain at least one BPM value to calculate statistics.")
         if target_bpm <= 0:
             raise ValueError("target_bpm must be greater than zero to calculate statistics.")
         median_bpm = float(np.median(bpm_array))
