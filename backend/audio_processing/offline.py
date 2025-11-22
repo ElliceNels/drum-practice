@@ -18,6 +18,7 @@ SKILL_TIERS = {
     1:  "Erratic",
 }
 
+
 class OfflineAudioProcessor:
     """
     A class to process audio files for beat and tempo detection using BeatNet.
@@ -25,13 +26,27 @@ class OfflineAudioProcessor:
 
     SAMPLE_RATE: int = 22050
 
-    def __init__(self, bpm_threshold: float = 10.0, accuracy_floor: float = 0.10, stability_floor: float = 20.0, consistency_floor: float = 0.18):
-        self.model: BeatNet = BeatNet(mode="offline", model=1, inference_model='DBN')
+    def __init__(
+            self,
+            bpm_threshold: float = 10.0,
+            accuracy_floor: float = 0.10,
+            stability_floor: float = 20.0,
+            consistency_floor: float = 0.18
+        ):
+        """Initializes the OfflineAudioProcessor with BeatNet model and parameters.
+        Args:
+            bpm_threshold (float): Allowed BPM deviation for threshold calculations.
+            accuracy_floor (float): Floor value for accuracy score normalization.
+            stability_floor (float): Floor value for stability score normalization.
+            consistency_floor (float): Floor value for consistency score normalization.
+        """
+        self.model: BeatNet = BeatNet(
+            mode="offline", model=1, inference_model='DBN')
         self.bpm_threshold: float = bpm_threshold
 
-        self.accuracy_floor: float = accuracy_floor # 10% BPM deviation allowed
-        self.stability_floor: float = stability_floor # 20 BPM std deviation allowed
-        self.consistency_floor: float = consistency_floor # 18% CV allowed
+        self.accuracy_floor: float = accuracy_floor  # 10% BPM deviation allowed
+        self.stability_floor: float = stability_floor  # 20 BPM std deviation allowed
+        self.consistency_floor: float = consistency_floor  # 18% CV allowed
 
     @staticmethod
     def load_audio(file_path: str) -> np.ndarray:
@@ -43,7 +58,8 @@ class OfflineAudioProcessor:
         Returns:
             np.ndarray: Audio time series.
         """
-        audio_data: np.ndarray = librosa.load(file_path, sr=OfflineAudioProcessor.SAMPLE_RATE)[0]
+        audio_data: np.ndarray = librosa.load(
+            file_path, sr=OfflineAudioProcessor.SAMPLE_RATE)[0]
         return audio_data
 
     def analyze_audio(self, audio_data: np.ndarray) -> tuple:
@@ -75,7 +91,8 @@ class OfflineAudioProcessor:
             float: Calculated tempo in BPM.
         """
         if len(beat_times) < 2:
-            raise ValueError("At least two beat times are required to calculate mean tempo.")
+            raise ValueError(
+                "At least two beat times are required to calculate mean tempo.")
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
 
     @staticmethod
@@ -139,7 +156,14 @@ class OfflineAudioProcessor:
             "percentage_within_threshold": percentage,
         }
 
-    def calculate_scores(self, mean_bpm: float, std_dev: float, cv: float, percentage: float, target_bpm: float) -> dict:
+    def calculate_scores(
+            self,
+            mean_bpm: float,
+            std_dev: float,
+            cv: float,
+            percentage: float,
+            target_bpm: float
+        ) -> dict:
         """Calculate quality scores based on tempo statistics.
 
         Args:
@@ -158,9 +182,11 @@ class OfflineAudioProcessor:
 
         # Normalise metrics into quality scores (0 = bad, 1 = excellent)
         accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
-        accuracy_score = 1 - np.clip(accuracy_error / self.accuracy_floor, 0, 1)
+        accuracy_score = 1 - \
+            np.clip(accuracy_error / self.accuracy_floor, 0, 1)
         stability_score = 1 - np.clip(std_dev / self.stability_floor, 0, 1)
-        consistency_score = 1 - np.clip((cv / 100) / self.consistency_floor, 0, 1)
+        consistency_score = 1 - \
+            np.clip((cv / 100) / self.consistency_floor, 0, 1)
         threshold_score = percentage / 100.0
 
         return {
@@ -171,7 +197,12 @@ class OfflineAudioProcessor:
         }
 
     @staticmethod
-    def scores_to_rank(accuracy: float, stability: float, consistency: float, threshold: float) -> tuple:
+    def scores_to_rank(
+        accuracy: float,
+        stability: float,
+        consistency: float,
+        threshold: float
+    ) -> tuple:
         """
         Create a performance rank from individual score components.
 
@@ -193,13 +224,13 @@ class OfflineAudioProcessor:
         )
 
         # Convert 0–1 score into 1–10 rank
-        rank = int(round(combined * 9)) + 1
-        final_rank = max(1, min(10, rank))
+        scaled_rank = int(round(combined * 9)) + 1
+        final_rank = max(1, min(10, scaled_rank))
         return final_rank, SKILL_TIERS[final_rank]
 
-    def performance_to_rank(self,bpm_array: np.ndarray, target_bpm: float) -> tuple:
+    def performance_to_rank(self, bpm_array: np.ndarray, target_bpm: float) -> tuple:
         """
-        Calculate performance rank directly from BPM array and target BPM. A wrapper for convenience.
+        Calculate performance rank directly from BPM array and target BPM. Convenience wrapper.
 
         Args:
             bpm_array (np.ndarray): Instantaneous BPM values.
@@ -217,10 +248,20 @@ class OfflineAudioProcessor:
             percentage=stats["percentage_within_threshold"],
             target_bpm=stats["target_bpm"]
         )
-        rank = OfflineAudioProcessor.scores_to_rank(
+        performance_rank = OfflineAudioProcessor.scores_to_rank(
             accuracy=scores["accuracy_score"],
             stability=scores["stability_score"],
             consistency=scores["consistency_score"],
             threshold=scores["threshold_score"]
         )
-        return rank
+        return performance_rank
+
+
+if __name__ == "__main__":
+    TEST_FILE = "..\\test_audio_files\\practice_124.wav"
+    processor = OfflineAudioProcessor()
+    data = processor.load_audio(TEST_FILE)
+    beats, dbeats = processor.analyze_audio(data)
+    bpm_arr = processor.calculate_bpm_array(beats)
+    rank = processor.performance_to_rank(bpm_arr, target_bpm=124.0)
+    print(f"Performance Rank: {rank[0]}, Description: {rank[1]}")
