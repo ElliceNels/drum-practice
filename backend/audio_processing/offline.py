@@ -24,12 +24,14 @@ class OfflineAudioProcessor:
     """
 
     SAMPLE_RATE: int = 22050
-    model: BeatNet = BeatNet(mode="offline", model=1, inference_model='DBN')
-    BPM_threshold: float = 10.0
 
-    ACCURACY_FLOOR: float = 0.10 # 10% BPM deviation allowed
-    STABILITY_FLOOR: float = 20.0 # 20 BPM std deviation allowed
-    CONSISTENCY_FLOOR: float = 0.18 # 18% CV allowed
+    def __init__(self, bpm_threshold: float = 10.0, accuracy_floor: float = 0.10, stability_floor: float = 20.0, consistency_floor: float = 0.18):
+        self.model: BeatNet = BeatNet(mode="offline", model=1, inference_model='DBN')
+        self.bpm_threshold: float = bpm_threshold
+
+        self.accuracy_floor: float = accuracy_floor # 10% BPM deviation allowed
+        self.stability_floor: float = stability_floor # 20 BPM std deviation allowed
+        self.consistency_floor: float = consistency_floor # 18% CV allowed
 
     @staticmethod
     def load_audio(file_path: str) -> np.ndarray:
@@ -44,8 +46,7 @@ class OfflineAudioProcessor:
         audio_data: np.ndarray = librosa.load(file_path, sr=OfflineAudioProcessor.SAMPLE_RATE)[0]
         return audio_data
 
-    @staticmethod
-    def analyze_audio(audio_data: np.ndarray) -> tuple:
+    def analyze_audio(self, audio_data: np.ndarray) -> tuple:
         """
         Analyzes an audio file to extract both beats and tempo.
 
@@ -56,7 +57,7 @@ class OfflineAudioProcessor:
                 - beat_times (list): List of detected beat times in seconds.
                 - downbeats (list): List indicating downbeats (1 for downbeat, 0 otherwise).
         """
-        res: np.ndarray = OfflineAudioProcessor.model.process(audio_data)
+        res: np.ndarray = self.model.process(audio_data)
         beat_times: np.ndarray = res[:, 0]
         downbeats: np.ndarray = res[:, 1]
 
@@ -106,8 +107,7 @@ class OfflineAudioProcessor:
         """
         return (beat_times[:-1] + beat_times[1:]) / 2
 
-    @staticmethod
-    def calculate_statistics(bpm_array: np.ndarray, target_bpm: float) -> dict:
+    def calculate_statistics(self, bpm_array: np.ndarray, target_bpm: float) -> dict:
         """
         Calculate tempo stability statistics based on a target BPM
 
@@ -125,7 +125,7 @@ class OfflineAudioProcessor:
         bpm_min, bpm_max = float(np.min(bpm_array)), float(np.max(bpm_array))
 
         deviation = np.abs(bpm_array - target_bpm)
-        within_mask = deviation <= OfflineAudioProcessor.BPM_threshold
+        within_mask = deviation <= self.bpm_threshold
         percentage = (np.sum(within_mask) / len(bpm_array)) * 100
         # TODO: Convert to DTO format when used
         return {
@@ -139,8 +139,7 @@ class OfflineAudioProcessor:
             "percentage_within_threshold": percentage,
         }
 
-    @staticmethod
-    def calculate_scores(mean_bpm: float, std_dev: float, cv: float, percentage: float, target_bpm: float) -> dict:
+    def calculate_scores(self, mean_bpm: float, std_dev: float, cv: float, percentage: float, target_bpm: float) -> dict:
         """Calculate quality scores based on tempo statistics.
 
         Args:
@@ -159,9 +158,9 @@ class OfflineAudioProcessor:
 
         # Normalise metrics into quality scores (0 = bad, 1 = excellent)
         accuracy_error = abs(mean_bpm - target_bpm) / target_bpm
-        accuracy_score = 1 - np.clip(accuracy_error / OfflineAudioProcessor.ACCURACY_FLOOR, 0, 1)
-        stability_score = 1 - np.clip(std_dev / OfflineAudioProcessor.STABILITY_FLOOR, 0, 1)
-        consistency_score = 1 - np.clip((cv / 100) / OfflineAudioProcessor.CONSISTENCY_FLOOR, 0, 1)
+        accuracy_score = 1 - np.clip(accuracy_error / self.accuracy_floor, 0, 1)
+        stability_score = 1 - np.clip(std_dev / self.stability_floor, 0, 1)
+        consistency_score = 1 - np.clip((cv / 100) / self.consistency_floor, 0, 1)
         threshold_score = percentage / 100.0
 
         return {
@@ -198,8 +197,7 @@ class OfflineAudioProcessor:
         final_rank = max(1, min(10, rank))
         return final_rank, SKILL_TIERS[final_rank]
 
-    @staticmethod
-    def performance_to_rank(bpm_array: np.ndarray, target_bpm: float) -> tuple:
+    def performance_to_rank(self,bpm_array: np.ndarray, target_bpm: float) -> tuple:
         """
         Calculate performance rank directly from BPM array and target BPM. A wrapper for convenience.
 
@@ -211,8 +209,8 @@ class OfflineAudioProcessor:
                 - rank (int): Performance rank from 1 to 10.
                 - description (str): Description of the skill tier.
         """
-        stats = OfflineAudioProcessor.calculate_statistics(bpm_array, target_bpm)
-        scores = OfflineAudioProcessor.calculate_scores(
+        stats = self.calculate_statistics(bpm_array, target_bpm)
+        scores = self.calculate_scores(
             mean_bpm=stats["mean_bpm"],
             std_dev=stats["std_dev"],
             cv=stats["variance_coefficient"],
