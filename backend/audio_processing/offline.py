@@ -40,7 +40,9 @@ class OfflineAudioProcessor:
         ):
         """
         Initializes the OfflineAudioProcessor with BeatNet model and parameters.
-        These parameters have been derived from empirical testing.
+These parameters have been derived from empirical testing with a variety of musical recordings.
+These thresholds were found to provide reasonable discrimination between different 
+levels of rhythmic performance.
 
         Args:
             bpm_threshold (float): Allowed BPM deviation for threshold calculations.
@@ -48,6 +50,14 @@ class OfflineAudioProcessor:
             stability_floor (float): Floor value for stability score normalization.
             consistency_floor (float): Floor value for consistency score normalization.
         """
+        if (
+            OfflineAudioProcessor.ACCURACY_WEIGHT +
+            OfflineAudioProcessor.CONSISTENCY_WEIGHT +
+            OfflineAudioProcessor.STABILITY_WEIGHT +
+            OfflineAudioProcessor.THRESHOLD_WEIGHT
+        ) != 1.0:
+            raise ValueError("Score weights must sum to 1.0")
+
         self.model: BeatNet = BeatNet(
             mode="offline", model=1, inference_model='DBN')
         self.bpm_threshold: float = bpm_threshold
@@ -141,6 +151,8 @@ class OfflineAudioProcessor:
         Returns:
             dict: Dictionary containing tempo stability metrics.
         """
+        if len(bpm_array) == 0:
+            raise ValueError("bpm_array must contain at least one BPM value to calculate statistics.")
         if target_bpm <= 0:
             raise ValueError("target_bpm must be greater than zero to calculate statistics.")
         median_bpm = float(np.median(bpm_array))
@@ -182,6 +194,7 @@ class OfflineAudioProcessor:
             target_bpm (float): Target BPM value
         Returns:
             dict: Dictionary containing accuracy, stability, consistency, and threshold scores.
+Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excellent.
         """
         # Accuracy: BPM error relative to target tempo
         # Stability: Standard deviation of BPM, overall longterm steadiness
