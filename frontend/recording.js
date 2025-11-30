@@ -40,6 +40,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("start-button").onclick = () => {
     if (recorder.state === "recording") return;
     document.getElementById("status-text").innerText = "Recording...";
+    // Clear chunks from previous recordings
+    chunks = [];
     recorder.start(TIME_SLICE_MS);
     // Disable buttons to prevent multiple clicks
     document.getElementById("start-button").disabled = true;
@@ -78,9 +80,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => URL.revokeObjectURL(url), 100);
 
     // TODO: send whole file to server
-
-    // Clear chunks for next recording
-    chunks = [];
   };
 
 });
