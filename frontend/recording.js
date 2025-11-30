@@ -1,6 +1,6 @@
 let recorder;
 let chunks = [];
-const timeSliceMs = 20;
+const TIME_SLICE_MS = 20;
 const MIME_WEBM = "audio/webm";
 const MIME_MP4 = "audio/mp4";
 const WEBM = "webm";
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("start-button").onclick = () => {
     if (recorder.state === "recording") return;
     document.getElementById("status-text").innerText = "Recording...";
-    recorder.start(timeSliceMs);
+    recorder.start(TIME_SLICE_MS);
   };
 
 
