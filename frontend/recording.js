@@ -16,9 +16,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   
-  let type = MIME_WEBM;
-  if (!MediaRecorder.isTypeSupported(type)) {
+  let type;
+  if (MediaRecorder.isTypeSupported(MIME_WEBM)) {
+    type = MIME_WEBM;
+  } else if (MediaRecorder.isTypeSupported(MIME_MP4)) {
     type = MIME_MP4;
+  } else {
+    document.getElementById("status-text").innerText = "Error: No supported audio format found for recording.";
+    document.getElementById("start-button").disabled = true;
+    document.getElementById("stop-button").disabled = true;
+    return;
   }
 
   recorder = new MediaRecorder(stream, { mimeType: type });
