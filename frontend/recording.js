@@ -1,3 +1,6 @@
+// MediaRecorder-based audio recording script for capturing live audio chunks
+// and allowing download of the full recording upon stopping. 
+
 let recorder;
 let chunks = [];
 const TIME_SLICE_MS = 20;
@@ -7,6 +10,10 @@ const WEBM = "webm";
 const MP4 = "mp4";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Disable stop button initially
+  document.getElementById("stop-button").disabled = true;
+  document.getElementById("start-button").disabled = false;
+
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -34,13 +41,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (recorder.state === "recording") return;
     document.getElementById("status-text").innerText = "Recording...";
     recorder.start(TIME_SLICE_MS);
+    // Disable buttons to prevent multiple clicks
+    document.getElementById("start-button").disabled = true;
+    document.getElementById("stop-button").disabled = false;
   };
-
-
+  
+  
   document.getElementById("stop-button").onclick  = () => {
     if (recorder.state !== "recording") return;
     document.getElementById("status-text").innerText = "Idle";
     recorder.stop();
+    // Disable buttons to prevent multiple clicks
+    document.getElementById("start-button").disabled = false;
+    document.getElementById("stop-button").disabled = true;
   };
 
 
