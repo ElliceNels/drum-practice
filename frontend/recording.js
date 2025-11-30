@@ -24,12 +24,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   recorder = new MediaRecorder(stream, { mimeType: type });
   
   document.getElementById("start-button").onclick = () => {
+    if (recorder.state === "recording") return;
     document.getElementById("status-text").innerText = "Recording...";
     recorder.start(timeSliceMs);
   };
 
 
   document.getElementById("stop-button").onclick  = () => {
+    if (recorder.state !== "recording") return;
     document.getElementById("status-text").innerText = "Idle";
     recorder.stop();
   };
