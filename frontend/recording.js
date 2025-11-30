@@ -6,8 +6,8 @@ let chunks = [];
 const TIME_SLICE_MS = 20;
 const MIME_WEBM = "audio/webm";
 const MIME_MP4 = "audio/mp4";
-const WEBM = "webm";
-const MP4 = "mp4";
+const EXTENSION_WEBM = "webm";
+const EXTENSION_MP4 = "mp4";
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Disable stop button initially
@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   
   
-  document.getElementById("stop-button").onclick  = () => {
+  document.getElementById("stop-button").onclick = () => {
     if (recorder.state !== "recording") return;
     document.getElementById("status-text").innerText = "Idle";
     recorder.stop();
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const url = URL.createObjectURL(audioBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "recording." + (type.includes(WEBM) ? WEBM : MP4);
+    a.download = "recording." + (type.includes(EXTENSION_WEBM) ? EXTENSION_WEBM : EXTENSION_MP4);
     a.click();
     // Revoke the object URL after a short delay to avoid memory leaks
     setTimeout(() => URL.revokeObjectURL(url), 5000);
