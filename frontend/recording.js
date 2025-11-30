@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     a.download = "recording." + (type.includes(WEBM) ? WEBM : MP4);
     a.click();
     // Revoke the object URL after a short delay to avoid memory leaks
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 
     // TODO: send whole file to server
   };
