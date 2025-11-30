@@ -7,7 +7,14 @@ const WEBM = "webm";
 const MP4 = "mp4";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    document.getElementById("status-text").innerText = "Microphone access denied or error occurred.";
+    console.error("Error accessing microphone:", err);
+    return;
+  }
   
   let type = MIME_WEBM;
   if (!MediaRecorder.isTypeSupported(type)) {
