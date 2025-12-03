@@ -5,7 +5,7 @@ from flask_socketio import SocketIO
 from .rest_api.routes import placeholder_api
 from .socket_api.audio import AudioNamespace
 
-socketio = SocketIO()
+socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
 
 def create_app():
     """Create and configure the Flask application."""
