@@ -1,5 +1,9 @@
-// MediaRecorder-based audio recording script for capturing live audio chunks
+// MediaRecorder-based audio recording script for capturing live audio chunks, sending them to a server
 // and allowing download of the full recording upon stopping. 
+import { connectToSocket,
+         disconnectFromSocket,
+         sendChunkToServer,
+         sendAudioFileToServer } from "./socket.js";
 
 let recorder;
 let chunks = [];
@@ -37,8 +41,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   recorder = new MediaRecorder(stream, { mimeType: type });
   
-  document.getElementById("start-button").onclick = () => {
+  document.getElementById("start-button").onclick = async () => {
     if (recorder.state === "recording") return;
+
+    // Connect to socket server
+    await connectToSocket();
+  
     document.getElementById("status-text").innerText = "Recording...";
     // Clear chunks from previous recordings
     chunks = [];
@@ -48,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("stop-button").disabled = false;
   };
   
-  
+
   document.getElementById("stop-button").onclick = () => {
     if (recorder.state !== "recording") return;
     document.getElementById("status-text").innerText = "Idle";
@@ -59,27 +67,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
 
-  recorder.ondataavailable = e => {
+  recorder.ondataavailable = async e => {
     chunks.push(e.data);
-    // TODO: Send chunk to server
-    e.data.arrayBuffer().then(buffer => {
-      // Log chunk size for debugging
-      console.log("Chunk size (bytes):", buffer.byteLength);
-    });
+    const buffer = await e.data.arrayBuffer();
+    // Log chunk size for debugging
+    console.log("Chunk size (bytes):", buffer.byteLength);
+    sendChunkToServer(buffer);
   };
 
-  recorder.onstop = () => {
+
+  recorder.onstop = async () => {
     const audioBlob = new Blob(chunks, { type });
 
     const url = URL.createObjectURL(audioBlob);
     const a = document.createElement("a");
     a.href = url;
+    // TODO: Prompt on where to save the file or don't download
     a.download = "recording." + (type.includes(EXTENSION_WEBM) ? EXTENSION_WEBM : EXTENSION_MP4);
     a.click();
     // Revoke the object URL after a short delay to avoid memory leaks
     setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-    // TODO: send whole file to server
+    // Send whole file to server
+    sendAudioFileToServer(await audioBlob.arrayBuffer());
+
+    // Disconnect from socket server
+    disconnectFromSocket();
   };
 
 });
