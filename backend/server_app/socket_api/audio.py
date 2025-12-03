@@ -1,5 +1,5 @@
 """Module defining the Audio Socket.IO namespace."""
-from flask_socketio import Namespace
+from flask_socketio import Namespace, emit
 
 class AudioNamespace(Namespace):
     """Socket.IO namespace for handling audio streaming."""
@@ -12,7 +12,16 @@ class AudioNamespace(Namespace):
         """Handle client disconnection."""
         print("Client disconnected from /audio")
 
-    def on_stream_chunk(self, data):
+    def on_receive_chunk(self, data):
         """Handle incoming audio stream chunk."""
+        if len(data) <= 1:
+            print("Received empty audio chunk.")
+            return
         print("Received audio chunk:", len(data))
         # Process the audio chunk with online audio processing
+        emit("chunk_response", {"data": "I just processed a chunk!"})
+
+    def on_receive_audio_file(self, data):
+        """Handle incoming full audio file."""
+        print("Received audio file:", len(data))
+        # Process the audio file with online audio processing
