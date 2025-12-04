@@ -15,20 +15,33 @@ function handleChunkResponse(data) {
 
 // Connect to server
 export function connectToSocket() {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+    let settled = false;
     socket = io(SOCKET_URL, {transports: ["websocket"]});
 
     socket.on(CONNECT_EVENT, () => {
-        console.log("Socket connected:", socket.id);
-        resolve(); // Ensure the promise resolves only after connection
+        if (!settled) {
+            settled = true;
+            console.log("Socket connected:", socket.id);
+            resolve(); // Ensure the promise resolves only after connection
+        }
     });
 
+    socket.on("connect_error", (error) => {
+        if (!settled) {
+            settled = true;
+            console.error("Socket connection error:", error);
+            reject(error);
+        }
+    });
     socket.on(CHUNK_RESPONSE_EVENT, handleChunkResponse);
   });
 }
 
 export function disconnectFromSocket() {
   if (!socket) return;
+  socket.off(CONNECT_EVENT);
+  socket.off(CHUNK_RESPONSE_EVENT, handleChunkResponse);
   socket.disconnect();
   socket = null;
 }
