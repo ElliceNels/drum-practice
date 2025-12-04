@@ -1,0 +1,11 @@
+{
+  "app": {
+    "host": "127.0.0.1",
+    "port": 5000,
+    "debug": true
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}
