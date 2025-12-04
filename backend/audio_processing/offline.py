@@ -353,10 +353,13 @@ Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excell
 
 
 if __name__ == "__main__":
+    import logging
+    logger = logging.getLogger(__name__)
+
     TEST_FILE = "..\\test_audio_files\\practice_124.wav"
     processor = OfflineAudioProcessor()
     data = processor.load_audio(TEST_FILE)
     beats, dbeats = processor.analyze_audio(data)
     bpm_arr = processor.calculate_bpm_array(beats)
     rank = processor.performance_to_rank(bpm_arr, target_bpm=124.0)
-    print(f"Performance Rank: {rank[0]}, Description: {rank[1]}")
+    logger.info("Performance Rank: %d, Description: %s", rank[0], rank[1])
