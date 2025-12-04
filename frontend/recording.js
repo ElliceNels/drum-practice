@@ -3,7 +3,8 @@
 import { connectToSocket,
          disconnectFromSocket,
          sendChunkToServer,
-         sendAudioFileToServer } from "./socket.js";
+         sendAudioFileToServer,
+         sendTempoToServer } from "./socket.js";
 
 let recorder;
 let chunks = [];
@@ -12,11 +13,26 @@ const MIME_WEBM = "audio/webm";
 const MIME_MP4 = "audio/mp4";
 const EXTENSION_WEBM = "webm";
 const EXTENSION_MP4 = "mp4";
+const MAX_TEMPO_BPM = 300;
+const MIN_TEMPO_BPM = 40;
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Disable stop button initially
   document.getElementById("stop-button").disabled = true;
   document.getElementById("start-button").disabled = false;
+
+  const useTempoCheckbox = document.getElementById("use-tempo-checkbox");
+  const tempoInput = document.getElementById("tempo-input");
+  const tempoUnit = document.getElementById("tempo-unit");
+
+  // Show or hide tempo number input based on checkbox
+  if (useTempoCheckbox) {
+    useTempoCheckbox.addEventListener('change', () => {
+      const show = useTempoCheckbox.checked;
+      tempoInput.style.display = show ? 'inline-block' : 'none';
+      tempoUnit.style.display = show ? 'inline-block' : 'none';
+    });
+  }
 
   let stream;
   try {
@@ -46,6 +62,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Connect to socket server
     await connectToSocket();
+
+    // If user enabled a desired tempo, send it to the server before starting
+    if (useTempoCheckbox && useTempoCheckbox.checked) {
+      const raw = tempoInput.value;
+      const tempo = parseFloat(raw);
+      if (!Number.isFinite(tempo) || tempo <= MIN_TEMPO_BPM || tempo >= MAX_TEMPO_BPM) {
+        // invalid tempo; show brief status and don't start
+        document.getElementById("status-text").innerText = "Invalid tempo value: Must be between 40 and 300 BPM.";
+        return;
+      }
+      try {
+        await sendTempoToServer(tempo);
+        console.log('Sent desired tempo to server:', tempo);
+      } catch (err) {
+        console.warn('Failed sending tempo to server, continuing:', err);
+      }
+    }
   
     document.getElementById("status-text").innerText = "Recording...";
     // Clear chunks from previous recordings

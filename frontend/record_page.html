@@ -16,6 +16,14 @@
     <button id="start-button">Start</button>
     <button id="stop-button">Stop</button>
 
+    <div id="tempo-controls" style="margin-top:12px;">
+      <label>
+        <input type="checkbox" id="use-tempo-checkbox" /> Use desired tempo
+      </label>
+      <input id="tempo-input" type="number" step="0.1" min="20" max="400" value="120.0"
+             style="width:90px; margin-left:8px; display:none;" />
+      <span id="tempo-unit" style="margin-left:6px; display:none;">BPM</span>
+    </div>
   </main>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+" crossorigin="anonymous"></script>

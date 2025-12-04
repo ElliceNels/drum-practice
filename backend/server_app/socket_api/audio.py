@@ -25,3 +25,10 @@ class AudioNamespace(Namespace):
         """Handle incoming full audio file."""
         print("Received audio file:", len(data))
         # Process the audio file with online audio processing
+
+    def on_desired_tempo(self, data):
+        """Handle desired tempo setting from client."""
+        tempo = data.get("tempo")
+        if tempo:
+            print("Received desired tempo:", tempo)
+            # Set the desired tempo for audio processing
