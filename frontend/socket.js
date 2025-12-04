@@ -15,6 +15,10 @@ function handleChunkResponse(data) {
 
 // Connect to server
 export function connectToSocket() {
+  if (socket && socket.connected) {
+    return Promise.resolve();
+  }
+
   return new Promise((resolve, reject) => {
     let settled = false;
     socket = io(SOCKET_URL, {transports: ["websocket"]});
@@ -77,5 +81,3 @@ export async function sendAudioFileToServer(arrayBuffer) {
 
   socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer);
 }
-
-
