@@ -124,7 +124,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        sampleRate: 48000,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        googAutoGainControl: false,
+        googNoiseSuppression: false,
+        googEchoCancellation: false
+      }
+    });
+
   } catch (err) {
     document.getElementById(STATUS_TEXT_ID).innerText =
       "Microphone access denied or error occurred.";

@@ -6,16 +6,32 @@ class PCMProcessor extends AudioWorkletProcessor {
 
   process(inputs) {
     const input = inputs[0];
-    if (!input || !input[0]) return true;
+    if (!input || input.length === 0) return true;
 
-    // input[0] = Float32Array of PCM samples
-    const frame = input[0];  
+    let frame;
 
-    // Send raw PCM frame to main thread
-    this.port.postMessage(frame);
+    if (input.length === 1) {
+      // Mono input (good)
+      frame = input[0];
+    } else {
+      // Stereo input (common)
+      let L = input[0];
+      let R = input[1];
+
+      // Mix stereo → mono
+      frame = new Float32Array(L.length);
+      for (let i = 0; i < L.length; i++) {
+        frame[i] = (L[i] + R[i]) * 0.5;
+      }
+    }
+
+    // Copy so the buffer doesn't get reused internally
+    const copy = new Float32Array(frame);
+    this.port.postMessage(copy, [copy.buffer]);
 
     return true;
   }
+
 }
 
 registerProcessor("pcm-processor", PCMProcessor);
