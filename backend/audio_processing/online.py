@@ -1,3 +1,4 @@
+""""Online audio processing using Aubio for real-time onset and tempo detection."""
 import time
 import logging
 import numpy as np
@@ -11,7 +12,7 @@ BUFFER_SIZE = 2048  # FFT buffer size for aubio
 logger = logging.getLogger(__name__)
 
 class OnlineAubioProcessor:
-    """Processes streaming audio chunks using Aubio with FFmpeg decoding."""
+    """Process audio chunks in real-time using Aubio for onset and tempo detection."""
     MAX_DEVIATION_BPM = 8.0  # Maximum allowed BPM deviation for tempo matching
 
     def __init__(self, samplerate=SAMPLERATE, hop_size=HOP_SIZE, buffer_size=BUFFER_SIZE):
@@ -50,6 +51,8 @@ class OnlineAubioProcessor:
                 if self.detected_bpm is not None:
                     self.bpms.append(self.detected_bpm)
                     self.mean_bpm = self._compute_average_bpm()
+                    if not self.desired_bpm:
+                        self.desired_bpm = self.mean_bpm
 
         self.last_beat_time = now
 
