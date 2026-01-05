@@ -106,8 +106,6 @@ class OnlineAubioProcessor:
         while index + self.hop_size <= total:
             frame = full_buffer[index:index + self.hop_size]
 
-            # Ensure proper dtype for Aubio
-            frame = frame.astype(np.float32)
             logger.debug("Max frame amplitude: %f", np.max(np.abs(frame)))
 
 
