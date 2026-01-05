@@ -1,12 +1,17 @@
 """Module defining the Audio Socket.IO namespace."""
 import logging
 from flask_socketio import Namespace, emit
+from audio_processing.online import OnlineAubioProcessor
 
 logger = logging.getLogger(__name__)
 
 
 class AudioNamespace(Namespace):
     """Socket.IO namespace for handling audio streaming."""
+
+    def __init__(self, namespace):
+        super().__init__(namespace)
+        self.online_processor = OnlineAubioProcessor()
 
     def on_connect(self):
         """Handle a new client connection."""
@@ -22,8 +27,10 @@ class AudioNamespace(Namespace):
             logger.warning("Received empty audio chunk.")
             return
         logger.debug("Received audio chunk of length: %d", len(data))
+        results = self.online_processor.process_chunk(data)
         # Process the audio chunk with online audio processing
-        emit("chunk_response", {"data": "I just processed a chunk!"})
+        if results:
+            emit("chunk_response", results[-1])
 
     def on_receive_audio_file(self, data):
         """Handle incoming full audio file."""
@@ -36,3 +43,4 @@ class AudioNamespace(Namespace):
         if tempo:
             logger.info("Received desired tempo: %s", tempo)
             # Set the desired tempo for audio processing
+            self.online_processor.set_desired_tempo(tempo)
