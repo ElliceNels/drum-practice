@@ -1,11 +1,11 @@
-""""Online audio processing using Aubio for real-time onset and tempo detection."""
+"""Online audio processing using Aubio for real-time onset and tempo detection."""
 import time
 import logging
 import numpy as np
 import aubio
 
 # TODO: Validate number choices here
-SAMPLERATE = 48000  # Default sample rate for MediaRecorder
+SAMPLERATE = 48000  # Default processing sample rate (e.g., typical browser/Web Audio output)
 HOP_SIZE = 1024     # Hop size for aubio processing
 BUFFER_SIZE = 2048  # FFT buffer size for aubio
 
@@ -47,13 +47,10 @@ class OnlineAubioProcessor:
             delta = now - self.last_beat_time
             if delta > 0:
                 self.detected_bpm = 60.0 / delta
-
-                if self.detected_bpm is not None:
-                    self.bpms.append(self.detected_bpm)
-                    self.mean_bpm = self._compute_average_bpm()
-                    if not self.desired_bpm:
-                        self.desired_bpm = self.mean_bpm
-
+                self.bpms.append(self.detected_bpm)
+                self.mean_bpm = self._compute_average_bpm()
+                if not self.desired_bpm:
+                    self.desired_bpm = self.mean_bpm
         self.last_beat_time = now
 
     def _compute_average_bpm(self):
@@ -110,7 +107,7 @@ class OnlineAubioProcessor:
 
             # Ensure proper dtype for Aubio
             frame = frame.astype(np.float32)
-            logger.debug(np.max(np.abs(frame)))
+            logger.debug("Max frame amplitude: %f", np.max(np.abs(frame)))
 
 
             onset_detected = bool(self.onset(frame))

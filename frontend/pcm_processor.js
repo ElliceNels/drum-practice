@@ -25,7 +25,7 @@ class PCMProcessor extends AudioWorkletProcessor {
       }
     }
 
-    // Copy so the buffer doesn't get reused internally
+    // Copy so we don't reuse the AudioWorklet's internal buffer; this copy is transferred below and cannot be reused after postMessage
     const copy = new Float32Array(frame);
     this.port.postMessage(copy, [copy.buffer]);
 
