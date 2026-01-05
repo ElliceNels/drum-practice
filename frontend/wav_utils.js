@@ -44,11 +44,8 @@ export function buildWavFile(pcm_array, sampleRate) {
   view.setUint32(40, dataSize, true);
 
   // Write PCM samples (float32)
-  let offset = HEADER_SIZE;
-  for (let i = 0; i < pcm_array.length; i++) {
-    view.setFloat32(offset, pcm_array[i], true);
-    offset += BYTES_PER_SAMPLE;
-  }
+  const pcmView = new Float32Array(buffer, HEADER_SIZE, pcm_array.length);
+  pcmView.set(pcm_array);
 
   return new Blob([buffer], { type: WAV_MIME_FORMAT });
 }
