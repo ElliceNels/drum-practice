@@ -58,7 +58,7 @@ async function startRecording() {
 
     if (!Number.isFinite(bpm) || bpm < MIN_TEMPO_BPM || bpm > MAX_TEMPO_BPM) {
       document.getElementById(STATUS_TEXT_ID).innerText =
-        "Invalid tempo value: Must be between 40 and 300 BPM.";
+        `Invalid tempo value: Must be between ${MIN_TEMPO_BPM} and ${MAX_TEMPO_BPM} BPM (inclusive).`;
       return;
     }
 
