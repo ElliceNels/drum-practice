@@ -39,7 +39,7 @@ async function setUpAudioWorklet(stream) {
   // Forward PCM audio from processor → socket & buffer for final file
   workletNode.port.onmessage = (event) => {
     const float32 = event.data; // Float32Array of PCM samples (frame size may vary)
-    pcmChunks.push(float32);    // no need to copy
+    pcmChunks.push(float32);    // store reference; we copy later to avoid holding onto the worklet's reused internal buffer
     sendChunkToServer(float32.buffer);
   };
 
