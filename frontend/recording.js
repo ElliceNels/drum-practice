@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
-        sampleRate: 48000,
+        sampleRate: SAMPLE_RATE,
         echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
@@ -150,7 +150,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  await setUpAudioWorklet(stream);
+  try {
+    await setUpAudioWorklet(stream);
+  } catch (err) {
+    document.getElementById(STATUS_TEXT_ID).innerText =
+      "Error setting up audio processing.";
+    console.error("Error setting up AudioWorklet:", err);
+    return;
+  }
 
   document.getElementById(START_BUTTON_ID).onclick = startRecording;
   document.getElementById(STOP_BUTTON_ID).onclick = stopRecording;
