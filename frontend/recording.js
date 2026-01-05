@@ -38,7 +38,7 @@ async function setUpAudioWorklet(stream) {
 
   // Forward PCM audio from processor → socket & buffer for final file
   workletNode.port.onmessage = (event) => {
-    const float32 = event.data; // Float32Array 128 samples
+    const float32 = event.data; // Float32Array of PCM samples (frame size may vary)
     pcmChunks.push(float32);    // no need to copy
     sendChunkToServer(float32.buffer);
   };
@@ -56,7 +56,7 @@ async function startRecording() {
     const raw = tempoInput.value;
     const bpm = parseFloat(raw);
 
-    if (!Number.isFinite(bpm) || bpm <= MIN_TEMPO_BPM || bpm >= MAX_TEMPO_BPM) {
+    if (!Number.isFinite(bpm) || bpm < MIN_TEMPO_BPM || bpm > MAX_TEMPO_BPM) {
       document.getElementById(STATUS_TEXT_ID).innerText =
         "Invalid tempo value: Must be between 40 and 300 BPM.";
       return;
@@ -79,6 +79,12 @@ async function startRecording() {
 }
 
 async function stopRecording() {
+  // Disconnect worklet node before suspending the audio context to avoid leaks.
+  if (workletNode) {
+    workletNode.disconnect();
+    // Optional: clear message handler to help GC.
+    workletNode.port.onmessage = null;
+  }
   audioContext.suspend();
   document.getElementById(STATUS_TEXT_ID).innerText = "Idle";
 
