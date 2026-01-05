@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 class OnlineAubioProcessor:
     """Process audio chunks in real-time using Aubio for onset and tempo detection."""
-    MAX_DEVIATION_BPM = 8.0  # Maximum allowed BPM deviation for tempo matching
+    MAX_DEVIATION_BPM = 15.0  # Maximum allowed BPM deviation for tempo matching
+    TOLERANCE_PERCENTAGE = 0.05  # Tolerance percentage for tempo matching
 
     def __init__(self, samplerate=SAMPLERATE, hop_size=HOP_SIZE, buffer_size=BUFFER_SIZE):
         self.samplerate = samplerate
@@ -68,7 +69,7 @@ class OnlineAubioProcessor:
             return None
 
         # Relative tolerance feels more musical
-        tolerance = max(3.0, self.desired_bpm * 0.05)
+        tolerance = min(self.MAX_DEVIATION_BPM, self.desired_bpm * self.TOLERANCE_PERCENTAGE)
 
         diff = bpm_to_compare - self.desired_bpm
 
