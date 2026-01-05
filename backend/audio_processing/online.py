@@ -112,16 +112,18 @@ class OnlineAubioProcessor:
             onset_detected = bool(self.onset(frame))
             beat_detected = bool(self.tempo_detector(frame))
 
+            tempo_match = None
             if beat_detected:
                 self._update_bpm()
                 logger.debug("BEAT DETECTED")
+                tempo_match = self._compare_tempo()
 
             result = {
                 "onset": onset_detected,
                 "beat": beat_detected,
                 "bpm": self.detected_bpm,
                 "mean_bpm": self.mean_bpm,
-                "tempo_match": self._compare_tempo()
+                "tempo_match": tempo_match
             }
             results.append(result)
 
