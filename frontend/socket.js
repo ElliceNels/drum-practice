@@ -6,6 +6,7 @@ const CHUNK_RESPONSE_EVENT = "chunk_response";
 const RECEIVE_CHUNK_EVENT = "receive_chunk";
 const RECEIVE_AUDIO_FILE_EVENT = "receive_audio_file";
 const DESIRED_TEMPO_EVENT = "desired_tempo";
+const PERFORMANCE_SUMMARY_EVENT = "performance_summary";
 const MAX_TEMPO_BPM = 300;
 const MIN_TEMPO_BPM = 40;
 
@@ -16,7 +17,8 @@ function handleChunkResponse(data) {
 // Connect to server
 export function connectToSocket() {
   if (socket && socket.connected) {
-    return Promise.resolve();
+    disconnectFromSocket();
+    console.log("Socket already connected. Reconnecting...");
   }
 
   return new Promise((resolve, reject) => {
@@ -39,6 +41,12 @@ export function connectToSocket() {
         }
     });
     socket.on(CHUNK_RESPONSE_EVENT, handleChunkResponse);
+
+    socket.on(PERFORMANCE_SUMMARY_EVENT, (data) => {
+      receiveOfflineAnalysis(data).catch((err) => {
+        console.warn("Failed to process performance summary:", err);
+      });
+    });
   });
 }
 
@@ -46,8 +54,10 @@ export function disconnectFromSocket() {
   if (!socket) return;
   socket.off(CONNECT_EVENT);
   socket.off(CHUNK_RESPONSE_EVENT, handleChunkResponse);
+  socket.off(PERFORMANCE_SUMMARY_EVENT);
   socket.disconnect();
   socket = null;
+  console.log("Socket disconnected successfully");
 }
 
 // Send desired tempo (BPM) to the server. Uses Socket.IO acknowledgement to confirm delivery.
@@ -80,4 +90,12 @@ export async function sendAudioFileToServer(arrayBuffer) {
   if (!socket || !arrayBuffer) return;
 
   socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer);
+  console.log("Sent full audio file to server, size:", arrayBuffer.byteLength);
+}
+
+export async function receiveOfflineAnalysis(results) {
+  console.log("Results received from server", results);
+  // Dispatch custom event so UI can update
+  const event = new CustomEvent("offlineAnalysisComplete", { detail: results });
+  document.dispatchEvent(event);
 }
