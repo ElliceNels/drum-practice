@@ -264,3 +264,5 @@ coverage.xml
 
 # Specfic folders
 test_audio_files/
+
+*.db
