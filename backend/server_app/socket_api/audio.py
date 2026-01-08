@@ -39,32 +39,39 @@ class AudioNamespace(Namespace):
 
     def on_receive_audio_file(self, data):
         """Handle incoming full audio file."""
-        logger.info("[RECV] Full audio file from client, size: %d bytes", len(data))
-        logger.debug("[PROC] Loading audio from bytes...")
-        # Process the audio file with offline audio processing
-        audio_data = self.offline_processor.load_audio_from_bytes(data)
-        logger.debug("[PROC] Analyzing audio for beats and downbeats...")
-        beats, downbeats = self.offline_processor.analyze_audio(audio_data)
-        logger.debug("[PROC] Detected %d beats", len(beats))
-        logger.debug("[PROC] Calculating BPM array from beat intervals...")
-        bpm_arr = self.offline_processor.calculate_bpm_array(beats)
+        try:
+            logger.info("[RECV] Full audio file from client, size: %d bytes", len(data))
+            logger.debug("[PROC] Loading audio from bytes...")
+            # Process the audio file with offline audio processing
+            audio_data = self.offline_processor.load_audio_from_bytes(data)
+            logger.debug("[PROC] Analyzing audio for beats and downbeats...")
+            beats, downbeats = self.offline_processor.analyze_audio(audio_data)
+            logger.debug("[PROC] Detected %d beats", len(beats))
+            logger.debug("[PROC] Calculating BPM array from beat intervals...")
+            bpm_arr = self.offline_processor.calculate_bpm_array(beats)
 
-        # Use desired BPM if set, otherwise use mean of detected BPM
-        target_bpm = self.online_processor.desired_bpm
-        if target_bpm is None:
-            target_bpm = self.offline_processor.calculate_mean_tempo(bpm_arr)
-            logger.info("[PROC] No desired BPM set, using detected mean BPM: %.2f", target_bpm)
-        else:
-            logger.info("[PROC] Using client-specified target BPM: %.2f", target_bpm)
-        
-        logger.debug("[PROC] Calculating performance rank...")
-        rank = self.offline_processor.performance_to_rank(bpm_arr, target_bpm=target_bpm)
-        if rank:
-            logger.info("[PROC] Performance analysis complete - Rank: %d, Description: %s", rank[0], rank[1])
-            logger.info("[SEND] Performance summary to client")
-            emit("performance_summary", {"rank": rank[0], "description": rank[1]})
-        else:
-            logger.error("[ERROR] Failed to calculate performance rank")
+            # Use desired BPM if set, otherwise use mean of detected BPM
+            target_bpm = self.online_processor.desired_bpm
+            if target_bpm is None:
+                target_bpm = self.offline_processor.calculate_mean_tempo(bpm_arr)
+                logger.info("[PROC] No desired BPM set, using detected mean BPM: %.2f", target_bpm)
+            else:
+                logger.info("[PROC] Using client-specified target BPM: %.2f", target_bpm)
+
+            logger.debug("[PROC] Calculating performance rank...")
+            rank = self.offline_processor.performance_to_rank(bpm_arr, target_bpm=target_bpm)
+            if rank:
+                logger.info("[PROC] Performance analysis complete - Rank: %d, Description: %s", rank[0], rank[1])
+                logger.info("[SEND] Performance summary to client")
+                emit("performance_summary", {"rank": rank[0], "description": rank[1]})
+            else:
+                logger.error("[ERROR] Failed to calculate performance rank")
+
+            # Send acknowledgement back to client
+            return {"success": True, "message": "Audio file processed successfully"}
+        except Exception as e:
+            logger.error("[ERROR] Exception while processing audio file: %s", str(e))
+            return {"success": False, "message": str(e)}
 
     def on_desired_tempo(self, data):
         """Handle desired tempo setting from client."""
@@ -76,5 +83,3 @@ class AudioNamespace(Namespace):
             self.online_processor.set_desired_tempo(tempo)
         else:
             logger.warning("[ERROR] Received desired tempo event but no tempo value provided")
-            # Set the desired tempo for audio processing
-            self.online_processor.set_desired_tempo(tempo)

@@ -120,7 +120,13 @@ async function stopRecording() {
 
   // Send WAV bytes to server
   const wavArrayBuffer = await wavBlob.arrayBuffer();
-  sendAudioFileToServer(wavArrayBuffer);
+  try {
+    await sendAudioFileToServer(wavArrayBuffer);
+    console.log("[SUCCESS] Audio file sent and processed by server");
+  } catch (err) {
+    console.error("[ERROR] Failed to send or process audio file:", err);
+    document.getElementById(STATUS_TEXT_ID).innerText = "Error: Failed to process audio. Please try again.";
+  }
 
   document.getElementById(STATUS_TEXT_ID).innerText = "Analysing performance...";
   document.getElementById(STOP_BUTTON_ID).disabled = true;

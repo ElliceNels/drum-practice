@@ -23,7 +23,10 @@ export function connectToSocket() {
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    socket = io(SOCKET_URL, {transports: ["websocket"]});
+    socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      maxHttpBufferSize: 5_000_000, // allow ~5MB uploads to match server
+    });
 
     socket.on(CONNECT_EVENT, () => {
         if (!settled) {
@@ -88,10 +91,22 @@ export async function sendChunkToServer(arrayBuffer) {
 
 // Send full audio file
 export async function sendAudioFileToServer(arrayBuffer) {
-  if (!socket || !arrayBuffer) return;
+  return new Promise((resolve, reject) => {
+    if (!socket) return reject(new Error("Socket not connected"));
+    if (!arrayBuffer) return reject(new Error("No audio data provided"));
 
-  console.log("[SEND] Full audio file to server, size:", arrayBuffer.byteLength, "bytes");
-  socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer);
+    console.log("[SEND] Full audio file to server, size:", arrayBuffer.byteLength, "bytes");
+    // Use acknowledgement callback to confirm reception
+    socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer, (ack) => {
+      if (ack && ack.success) {
+        console.log("[RECV] Server acknowledged audio file reception");
+        resolve(ack);
+      } else {
+        console.error("[ERROR] Server failed to acknowledge audio file");
+        reject(new Error("Server failed to process audio file"));
+      }
+    });
+  });
 }
 
 export async function receiveOfflineAnalysis(results) {

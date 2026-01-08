@@ -15,7 +15,11 @@ configure_logging(config)
 logger = logging.getLogger(__name__)
 logger.debug("Configuration Loaded: %s", config)
 
-socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+    max_http_buffer_size=5_000_000,  # allow ~5MB uploads for full WAV payloads
+)
 
 def create_app():
     """Create and configure the Flask application."""
