@@ -11,7 +11,7 @@ const MAX_TEMPO_BPM = 300;
 const MIN_TEMPO_BPM = 40;
 
 function handleChunkResponse(data) {
-  console.log("Received response from server:", data);
+  console.log("[RECV] Chunk response from server:", data);
 }
 
 // Connect to server
@@ -28,7 +28,7 @@ export function connectToSocket() {
     socket.on(CONNECT_EVENT, () => {
         if (!settled) {
             settled = true;
-            console.log("Socket connected:", socket.id);
+            console.log("[SOCKET] Connected to server with ID:", socket.id, "at URL:", SOCKET_URL);
             resolve(); // Ensure the promise resolves only after connection
         }
     });
@@ -36,7 +36,7 @@ export function connectToSocket() {
     socket.on("connect_error", (error) => {
         if (!settled) {
             settled = true;
-            console.error("Socket connection error:", error);
+            console.error("[ERROR] Socket connection failed:", error);
             reject(error);
         }
     });
@@ -52,12 +52,13 @@ export function connectToSocket() {
 
 export function disconnectFromSocket() {
   if (!socket) return;
+  console.log("[SOCKET] Disconnecting from server...");
   socket.off(CONNECT_EVENT);
   socket.off(CHUNK_RESPONSE_EVENT, handleChunkResponse);
   socket.off(PERFORMANCE_SUMMARY_EVENT);
   socket.disconnect();
   socket = null;
-  console.log("Socket disconnected successfully");
+  console.log("[SOCKET] Disconnected successfully");
 }
 
 // Send desired tempo (BPM) to the server. Uses Socket.IO acknowledgement to confirm delivery.
@@ -81,20 +82,20 @@ export function sendTempoToServer(tempo) {
 export async function sendChunkToServer(arrayBuffer) {
   if (!socket || !arrayBuffer) return;
 
+  console.log("[SEND] Audio chunk to server, size:", arrayBuffer.byteLength, "bytes");
   socket.emit(RECEIVE_CHUNK_EVENT, arrayBuffer);
-
 }
 
 // Send full audio file
 export async function sendAudioFileToServer(arrayBuffer) {
   if (!socket || !arrayBuffer) return;
 
+  console.log("[SEND] Full audio file to server, size:", arrayBuffer.byteLength, "bytes");
   socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer);
-  console.log("Sent full audio file to server, size:", arrayBuffer.byteLength);
 }
 
 export async function receiveOfflineAnalysis(results) {
-  console.log("Results received from server", results);
+  console.log("[RECV] Offline analysis results from server:", results);
   // Dispatch custom event so UI can update
   const event = new CustomEvent("offlineAnalysisComplete", { detail: results });
   document.dispatchEvent(event);
