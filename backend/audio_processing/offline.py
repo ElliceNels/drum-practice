@@ -1,5 +1,6 @@
 """Offline audio processing for beat and tempo detection using BeatNet."""
 
+import io
 from BeatNet.BeatNet import BeatNet
 import librosa
 import numpy as np
@@ -73,6 +74,22 @@ levels of rhythmic performance.
         """
         audio_data: np.ndarray = librosa.load(
             file_path, sr=OfflineAudioProcessor.SAMPLE_RATE)[0]
+        return audio_data
+    
+    @staticmethod
+    def load_audio_from_bytes(audio_bytes: bytes) -> np.ndarray:
+        """
+        Loads audio data from bytes.
+
+        Args:
+            audio_bytes (bytes): Audio data in bytes.
+        Returns:
+            np.ndarray: Audio time series.
+        """
+        audio_data: np.ndarray = librosa.load(
+            io.BytesIO(audio_bytes),
+            sr=OfflineAudioProcessor.SAMPLE_RATE
+        )[0]
         return audio_data
 
     def analyze_audio(self, audio_data: np.ndarray) -> tuple:

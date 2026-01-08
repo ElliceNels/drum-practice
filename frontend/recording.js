@@ -12,6 +12,7 @@ import { buildWavFile, mergeFloat32Arrays } from "./wav_utils.js";
 
 let audioContext = null;
 let workletNode = null;
+let micSource = null;
 let pcmChunks = [];        // stores raw float32 PCM for final download
 let useTempoCheckbox = null;
 let tempoInput = null;
@@ -30,10 +31,14 @@ const TEMPO_UNIT_ID = "tempo-unit";
 const STATUS_TEXT_ID = "status-text";
 
 async function setUpAudioWorklet(stream) {
-  audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
+  // Create audio context if it doesn't exist
+  if (!audioContext) {
+    audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
+    // Load worklet file once
+    await audioContext.audioWorklet.addModule("./pcm_processor.js");
+  }
 
-  // Load worklet file and create Node
-  await audioContext.audioWorklet.addModule("./pcm_processor.js");
+  // Create new worklet node
   workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
 
   // Forward PCM audio from processor → socket & buffer for final file
@@ -43,8 +48,12 @@ async function setUpAudioWorklet(stream) {
     sendChunkToServer(float32.buffer);
   };
 
+  // Create or reuse mic source
+  if (!micSource) {
+    micSource = audioContext.createMediaStreamSource(stream);
+  }
+  
   // Connect mic → worklet
-  const micSource = audioContext.createMediaStreamSource(stream);
   micSource.connect(workletNode);
 }
 
@@ -75,18 +84,33 @@ async function startRecording() {
   document.getElementById(START_BUTTON_ID).disabled = true;
   document.getElementById(STOP_BUTTON_ID).disabled = false;
 
-  audioContext.resume();
+  // Resume or recreate the worklet node if needed
+  if (audioContext.state === "suspended") {
+    await audioContext.resume();
+  }
+  
+  // Recreate worklet node if it was disconnected
+  if (!workletNode || workletNode.port.onmessage === null) {
+    const stream = micSource.mediaStream;
+    await setUpAudioWorklet(stream);
+  }
 }
 
+// Stop recording, send full audio to server, download locally if desired, then disconnect.
 async function stopRecording() {
-  // Disconnect worklet node before suspending the audio context to avoid leaks.
+  // Suspend audio context to stop recording
+  if (audioContext && audioContext.state === "running") {
+    await audioContext.suspend();
+  }
+  
+  // Disconnect worklet node to stop processing
   if (workletNode) {
     workletNode.disconnect();
-    // Optional: clear message handler to help GC.
     workletNode.port.onmessage = null;
+    workletNode = null;
   }
-  audioContext.suspend();
-  document.getElementById(STATUS_TEXT_ID).innerText = "Idle";
+  
+  document.getElementById(STATUS_TEXT_ID).innerText = "Processing...";
 
   // Merge Float32 PCM into one array
   const merged = mergeFloat32Arrays(pcmChunks);
@@ -94,20 +118,26 @@ async function stopRecording() {
   // Build WAV and download locally
   const wavBlob = buildWavFile(merged, audioContext.sampleRate);
 
+  // Send WAV bytes to server
+  const wavArrayBuffer = await wavBlob.arrayBuffer();
+  try {
+    await sendAudioFileToServer(wavArrayBuffer);
+    console.log("[SUCCESS] Audio file sent and processed by server");
+  } catch (err) {
+    console.error("[ERROR] Failed to send or process audio file:", err);
+    document.getElementById(STATUS_TEXT_ID).innerText = "Error: Failed to process audio. Please try again.";
+  }
+
+  document.getElementById(STATUS_TEXT_ID).innerText = "Analysing performance...";
+  document.getElementById(STOP_BUTTON_ID).disabled = true;
+
+  // Download the file
   const url = URL.createObjectURL(wavBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = "recording.wav";
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), REVOKE_TIMEOUT_MS);
-
-  // Send whole PCM audio to server
-  await sendAudioFileToServer(merged.buffer);
-
-  disconnectFromSocket();
-
-  document.getElementById(START_BUTTON_ID).disabled = false;
-  document.getElementById(STOP_BUTTON_ID).disabled = true;
 }
 
 // On Loadup
@@ -161,4 +191,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById(START_BUTTON_ID).onclick = startRecording;
   document.getElementById(STOP_BUTTON_ID).onclick = stopRecording;
+
+  // Listen for offline analysis results
+  document.addEventListener("offlineAnalysisComplete", (event) => {
+    const results = event.detail;
+    const rank = results.rank || "N/A";
+    const description = results.description || "No description";
+    document.getElementById(STATUS_TEXT_ID).innerText = 
+      `Performance Rank: ${rank}/10 - ${description}`;
+    document.getElementById(START_BUTTON_ID).disabled = false;
+    document.getElementById(STOP_BUTTON_ID).disabled = true;
+    console.log("Performance analysis complete:", results);
+  });
 });

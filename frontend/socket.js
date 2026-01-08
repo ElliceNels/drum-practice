@@ -6,27 +6,32 @@ const CHUNK_RESPONSE_EVENT = "chunk_response";
 const RECEIVE_CHUNK_EVENT = "receive_chunk";
 const RECEIVE_AUDIO_FILE_EVENT = "receive_audio_file";
 const DESIRED_TEMPO_EVENT = "desired_tempo";
+const PERFORMANCE_SUMMARY_EVENT = "performance_summary";
 const MAX_TEMPO_BPM = 300;
 const MIN_TEMPO_BPM = 40;
 
 function handleChunkResponse(data) {
-  console.log("Received response from server:", data);
+  console.log("[RECV] Chunk response from server:", data);
 }
 
 // Connect to server
 export function connectToSocket() {
   if (socket && socket.connected) {
-    return Promise.resolve();
+    disconnectFromSocket();
+    console.log("Socket already connected. Reconnecting...");
   }
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    socket = io(SOCKET_URL, {transports: ["websocket"]});
+    socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      maxHttpBufferSize: 5_000_000, // allow ~5MB uploads to match server
+    });
 
     socket.on(CONNECT_EVENT, () => {
         if (!settled) {
             settled = true;
-            console.log("Socket connected:", socket.id);
+            console.log("[SOCKET] Connected to server with ID:", socket.id, "at URL:", SOCKET_URL);
             resolve(); // Ensure the promise resolves only after connection
         }
     });
@@ -34,20 +39,29 @@ export function connectToSocket() {
     socket.on("connect_error", (error) => {
         if (!settled) {
             settled = true;
-            console.error("Socket connection error:", error);
+            console.error("[ERROR] Socket connection failed:", error);
             reject(error);
         }
     });
     socket.on(CHUNK_RESPONSE_EVENT, handleChunkResponse);
+
+    socket.on(PERFORMANCE_SUMMARY_EVENT, (data) => {
+      receiveOfflineAnalysis(data).catch((err) => {
+        console.warn("Failed to process performance summary:", err);
+      });
+    });
   });
 }
 
 export function disconnectFromSocket() {
   if (!socket) return;
+  console.log("[SOCKET] Disconnecting from server...");
   socket.off(CONNECT_EVENT);
   socket.off(CHUNK_RESPONSE_EVENT, handleChunkResponse);
+  socket.off(PERFORMANCE_SUMMARY_EVENT);
   socket.disconnect();
   socket = null;
+  console.log("[SOCKET] Disconnected successfully");
 }
 
 // Send desired tempo (BPM) to the server. Uses Socket.IO acknowledgement to confirm delivery.
@@ -71,13 +85,33 @@ export function sendTempoToServer(tempo) {
 export async function sendChunkToServer(arrayBuffer) {
   if (!socket || !arrayBuffer) return;
 
+  console.log("[SEND] Audio chunk to server, size:", arrayBuffer.byteLength, "bytes");
   socket.emit(RECEIVE_CHUNK_EVENT, arrayBuffer);
-
 }
 
 // Send full audio file
 export async function sendAudioFileToServer(arrayBuffer) {
-  if (!socket || !arrayBuffer) return;
+  return new Promise((resolve, reject) => {
+    if (!socket) return reject(new Error("Socket not connected"));
+    if (!arrayBuffer) return reject(new Error("No audio data provided"));
 
-  socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer);
+    console.log("[SEND] Full audio file to server, size:", arrayBuffer.byteLength, "bytes");
+    // Use acknowledgement callback to confirm reception
+    socket.emit(RECEIVE_AUDIO_FILE_EVENT, arrayBuffer, (ack) => {
+      if (ack && ack.success) {
+        console.log("[RECV] Server acknowledged audio file reception");
+        resolve(ack);
+      } else {
+        console.error("[ERROR] Server failed to acknowledge audio file");
+        reject(new Error("Server failed to process audio file"));
+      }
+    });
+  });
+}
+
+export async function receiveOfflineAnalysis(results) {
+  console.log("[RECV] Offline analysis results from server:", results);
+  // Dispatch custom event so UI can update
+  const event = new CustomEvent("offlineAnalysisComplete", { detail: results });
+  document.dispatchEvent(event);
 }
