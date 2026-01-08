@@ -140,4 +140,7 @@ class OnlineAubioProcessor:
             len(self._leftover)
         )
 
-        return results
+        if beat_detected:
+            return results
+        else:
+            return []
