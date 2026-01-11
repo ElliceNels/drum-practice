@@ -6,6 +6,9 @@ import librosa
 import numpy as np
 from scipy.signal import medfilt
 
+from data_model.statistics import TempoStatistics
+from data_model.scores import QualityScores
+
 SECONDS_IN_MINUTE: int = 60
 MAX_REALISTIC_BPM: int = 300
 MIN_REALISTIC_BPM: int = 40
@@ -75,7 +78,7 @@ levels of rhythmic performance.
         audio_data: np.ndarray = librosa.load(
             file_path, sr=OfflineAudioProcessor.SAMPLE_RATE)[0]
         return audio_data
-    
+
     @staticmethod
     def load_audio_from_bytes(audio_bytes: bytes) -> np.ndarray:
         """
@@ -231,7 +234,7 @@ levels of rhythmic performance.
         """
         return (beat_times[:-1] + beat_times[1:]) / 2
 
-    def calculate_statistics(self, bpm_array: np.ndarray, target_bpm: float) -> dict:
+    def calculate_statistics(self, bpm_array: np.ndarray, target_bpm: float) -> TempoStatistics:
         """
         Calculate tempo stability statistics based on a target BPM.
 
@@ -239,7 +242,7 @@ levels of rhythmic performance.
             bpm_array (np.ndarray): Instantaneous BPM values.
             target_bpm (float): The intended BPM of the song/performance.
         Returns:
-            dict: Dictionary containing tempo stability metrics.
+            TempoStatistics: DTO containing tempo stability metrics.
         """
         if len(bpm_array) == 0:
             raise ValueError("Array must contain at least one BPM value to calculate statistics.")
@@ -253,17 +256,17 @@ levels of rhythmic performance.
         deviation = np.abs(bpm_array - target_bpm)
         within_mask = deviation <= self.bpm_threshold
         percentage = (np.sum(within_mask) / len(bpm_array)) * 100
-        # TODO: Convert to DTO format when used
-        return {
-            "target_bpm": target_bpm,
-            "mean_bpm": float(np.mean(bpm_array)),
-            "median_bpm": median_bpm,
-            "bpm_min": bpm_min,
-            "bpm_max": bpm_max,
-            "std_dev": std_bpm,
-            "variance_coefficient": cv,
-            "percentage_within_threshold": percentage,
-        }
+
+        return TempoStatistics(
+            target_bpm=target_bpm,
+            mean_bpm=float(np.mean(bpm_array)),
+            median_bpm=median_bpm,
+            bpm_min=bpm_min,
+            bpm_max=bpm_max,
+            std_dev=std_bpm,
+            variance_coefficient=cv,
+            percentage_within_threshold=percentage,
+        )
 
     def calculate_scores(
             self,
@@ -272,7 +275,7 @@ levels of rhythmic performance.
             cv: float,
             percentage: float,
             target_bpm: float
-        ) -> dict:
+        ) -> QualityScores:
         """
         Calculate quality scores based on tempo statistics.
 
@@ -283,7 +286,7 @@ levels of rhythmic performance.
             percentage (float): Percentage of BPM values within threshold
             target_bpm (float): Target BPM value
         Returns:
-            dict: Dictionary containing accuracy, stability, consistency, and threshold scores.
+            QualityScores: DTO containing accuracy, stability, consistency, and threshold scores.
 Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excellent.
         """
         # Accuracy: BPM error relative to target tempo
@@ -301,12 +304,12 @@ Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excell
         consistency_score = 1 - np.clip((cv / 100) / self.consistency_floor, 0, 1)
         threshold_score = percentage / 100.0
 
-        return {
-            "accuracy_score": float(accuracy_score),
-            "stability_score": float(stability_score),
-            "consistency_score": float(consistency_score),
-            "threshold_score": float(threshold_score)
-        }
+        return QualityScores(
+            accuracy=float(accuracy_score),
+            stability=float(stability_score),
+            consistency=float(consistency_score),
+            threshold=float(threshold_score)
+        )
 
     @staticmethod
     def scores_to_rank(
@@ -354,17 +357,17 @@ Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excell
         """
         stats = self.calculate_statistics(bpm_array, target_bpm)
         scores = self.calculate_scores(
-            mean_bpm=stats["mean_bpm"],
-            std_dev=stats["std_dev"],
-            cv=stats["variance_coefficient"],
-            percentage=stats["percentage_within_threshold"],
-            target_bpm=stats["target_bpm"]
+            mean_bpm=stats.mean_bpm,
+            std_dev=stats.std_dev,
+            cv=stats.variance_coefficient,
+            percentage=stats.percentage_within_threshold,
+            target_bpm=stats.target_bpm
         )
         performance_rank = OfflineAudioProcessor.scores_to_rank(
-            accuracy=scores["accuracy_score"],
-            stability=scores["stability_score"],
-            consistency=scores["consistency_score"],
-            threshold=scores["threshold_score"]
+            accuracy=scores.accuracy,
+            stability=scores.stability,
+            consistency=scores.consistency,
+            threshold=scores.threshold
         )
         return performance_rank
 
