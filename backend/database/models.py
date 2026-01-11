@@ -88,7 +88,8 @@ class Stats(Base):
     min_bpm = Column(Float)
     max_bpm = Column(Float)
     median_bpm = Column(Float)
-    coeff_variation = Column(Float)
+    variance_coefficient = Column(Float)
+    percentage_within_threshold = Column(Float)
 
     session = relationship("Session", back_populates="stats")
 
