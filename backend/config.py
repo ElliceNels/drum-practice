@@ -22,13 +22,19 @@ class LoggingConfig:
     level: str = "INFO"
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
+@dataclass
+class DatabaseConfig:
+    """Database configuration settings."""
+    url: str = ""
+    name: str = "app.db"
+
 
 @dataclass
 class Config:
     """Top-level configuration dataclass."""
     app: AppConfig
     logging: LoggingConfig
-
+    database: DatabaseConfig
 
 def _default_config_path() -> Path:
     return Path(__file__).parent / "config.json"
@@ -53,7 +59,7 @@ def load_config(path: Optional[str] = None) -> Config:
         logger.warning(
             "Configuration file %s not found, using default configuration.", str(cfg_path)
         )
-        default_config = Config(app=AppConfig(), logging=LoggingConfig())
+        default_config = Config(app=AppConfig(), logging=LoggingConfig(), database=DatabaseConfig())
         return default_config
 
     app_dict = raw.get("app", {})
@@ -70,7 +76,12 @@ def load_config(path: Optional[str] = None) -> Config:
         format=str(log_dict.get("format", LoggingConfig.format)),
     )
 
-    return Config(app=app_cfg, logging=logging_cfg)
+    database_cfg = DatabaseConfig(
+        url=str(raw.get("database", {}).get("url", "")),
+        name=str(raw.get("database", {}).get("name", "app.db")),
+    )
+
+    return Config(app=app_cfg, logging=logging_cfg, database=database_cfg)
 
 
 # Module-level config object populated on import for easy access
@@ -78,5 +89,5 @@ try:
     config: Config = load_config()
 except (FileNotFoundError, json.JSONDecodeError, ValueError, KeyError):
     # In case of any unexpected error during load, fall back to defaults
-    config = Config(app=AppConfig(), logging=LoggingConfig())
+    config = Config(app=AppConfig(), logging=LoggingConfig(), database=DatabaseConfig())
     logger.exception("Failed to load configuration, using defaults.")

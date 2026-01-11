@@ -9,6 +9,7 @@ from config import config
 from logging_config import configure_logging
 from server_app.rest_api.routes import placeholder_api
 from server_app.socket_api.audio import AudioNamespace
+from database.models import init_db
 
 # Configure logging using the module-level config object
 configure_logging(config)
@@ -24,6 +25,9 @@ socketio = SocketIO(
 def create_app():
     """Create and configure the Flask application."""
     flask_app = Flask(__name__)
+
+    # Ensure tables exist before handling requests or socket connections.
+    init_db()
 
     # Register HTTP blueprints, Socket.IO namespaces and handlers
     flask_app.register_blueprint(placeholder_api)
