@@ -110,7 +110,8 @@ async function stopRecording() {
     workletNode = null;
   }
   
-  document.getElementById(STATUS_TEXT_ID).innerText = "Processing...";
+  document.getElementById(STATUS_TEXT_ID).innerText = "Analysing performance...";
+  document.getElementById(STOP_BUTTON_ID).disabled = true;
 
   // Merge Float32 PCM into one array
   const merged = mergeFloat32Arrays(pcmChunks);
@@ -128,7 +129,7 @@ async function stopRecording() {
     document.getElementById(STATUS_TEXT_ID).innerText = "Error: Failed to process audio. Please try again.";
   }
 
-  document.getElementById(STATUS_TEXT_ID).innerText = "Analysing performance...";
+  document.getElementById(STATUS_TEXT_ID).innerText = "Idle";
   document.getElementById(STOP_BUTTON_ID).disabled = true;
 
   // Download the file
