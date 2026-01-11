@@ -102,6 +102,7 @@ class OnlineAubioProcessor:
         index = 0
         total = len(full_buffer)
 
+        beat_detected = False
         # Process full hop_size frames
         while index + self.hop_size <= total:
             frame = full_buffer[index:index + self.hop_size]
