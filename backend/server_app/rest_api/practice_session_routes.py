@@ -122,7 +122,7 @@ def save_session():
             missing_fields = [f for f in required_stats_fields if f not in stats_dict]
             if missing_fields:
                 return jsonify({"error": f"Missing required stats fields: {', '.join(missing_fields)}"}), BAD_REQUEST_CODE
-            
+
             stats_data = TempoStatistics(
                 target_bpm=stats_dict["target_bpm"],
                 mean_bpm=stats_dict["mean_bpm"],
@@ -145,7 +145,7 @@ def save_session():
             missing_fields = [f for f in required_score_fields if f not in score_dict]
             if missing_fields:
                 return jsonify({"error": f"Missing required score fields: {', '.join(missing_fields)}"}), BAD_REQUEST_CODE
-            
+
             quality_scores = QualityScores(
                 accuracy=score_dict["accuracy"],
                 stability=score_dict["stability"],
@@ -268,10 +268,10 @@ def get_all_sessions():
     result, code = get_all_practice_sessions(
         user_id, limit, offset, order_by, order_dir
     )
-    
+
     if code != SUCCESS_CODE:
         return result, code
-    
+
     items, total, limit, offset = result
 
     sessions_list = []

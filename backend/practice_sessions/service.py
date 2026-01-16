@@ -5,6 +5,7 @@ Handles all database interactions and business logic for practice sessions.
 import logging
 from typing import Optional, Tuple
 from flask import jsonify
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 
 from database.models import Session, get_session
 from data_model.statistics import TempoStatistics
@@ -72,8 +73,14 @@ def save_practice_session(
             "message": "Session saved successfully"
         }), CREATED_CODE
 
-    except Exception as e:
-        logger.exception("Error saving session for user %d: %s", user_id, e)
+    except IntegrityError as e:
+        logger.exception("Integrity error saving session for user %d: %s", user_id, e)
+        return jsonify({"error": "Database integrity constraint violation"}), INTERNAL_SERVER_ERROR_CODE
+    except OperationalError as e:
+        logger.exception("Database operational error saving session for user %d: %s", user_id, e)
+        return jsonify({"error": "Database connection error"}), INTERNAL_SERVER_ERROR_CODE
+    except SQLAlchemyError as e:
+        logger.exception("Database error saving session for user %d: %s", user_id, e)
         return jsonify({"error": "Internal server error"}), INTERNAL_SERVER_ERROR_CODE
 
 
@@ -118,8 +125,11 @@ def get_practice_session(session_id: int, user_id: int) -> Tuple[object, int]:
 
             return (session, stats_dto, score_dto), SUCCESS_CODE
 
-    except Exception as e:
-        logger.exception("Error retrieving session %d: %s", session_id, e)
+    except OperationalError as e:
+        logger.exception("Database operational error retrieving session %d: %s", session_id, e)
+        return jsonify({"error": "Database connection error"}), INTERNAL_SERVER_ERROR_CODE
+    except SQLAlchemyError as e:
+        logger.exception("Database error retrieving session %d: %s", session_id, e)
         return jsonify({"error": "Internal server error"}), INTERNAL_SERVER_ERROR_CODE
 
 
@@ -186,8 +196,11 @@ def get_all_practice_sessions(
 
             return (items, total, limit, offset), SUCCESS_CODE
 
-    except Exception as e:
-        logger.exception("Error retrieving sessions for user %d: %s", user_id, e)
+    except OperationalError as e:
+        logger.exception("Database operational error retrieving sessions for user %d: %s", user_id, e)
+        return jsonify({"error": "Database connection error"}), INTERNAL_SERVER_ERROR_CODE
+    except SQLAlchemyError as e:
+        logger.exception("Database error retrieving sessions for user %d: %s", user_id, e)
         return jsonify({"error": "Internal server error"}), INTERNAL_SERVER_ERROR_CODE
 
 
@@ -222,6 +235,12 @@ def delete_practice_session(session_id: int, user_id: int) -> Tuple[dict, int]:
         logger.info("Session %d deleted by user %d", session_id, user_id)
         return jsonify({"message": "Session deleted successfully"}), SUCCESS_CODE
 
-    except Exception as e:
-        logger.exception("Error deleting session %d: %s", session_id, e)
+    except IntegrityError as e:
+        logger.exception("Integrity error deleting session %d: %s", session_id, e)
+        return jsonify({"error": "Cannot delete session due to database constraints"}), INTERNAL_SERVER_ERROR_CODE
+    except OperationalError as e:
+        logger.exception("Database operational error deleting session %d: %s", session_id, e)
+        return jsonify({"error": "Database connection error"}), INTERNAL_SERVER_ERROR_CODE
+    except SQLAlchemyError as e:
+        logger.exception("Database error deleting session %d: %s", session_id, e)
         return jsonify({"error": "Internal server error"}), INTERNAL_SERVER_ERROR_CODE
