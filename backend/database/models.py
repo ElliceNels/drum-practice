@@ -64,8 +64,8 @@ class Session(Base):
                      nullable=False, index=True)
     recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(
         timezone.utc), nullable=False)
-    file_location = Column(String(512))
-    length_seconds = Column(Float)
+    file_location = Column(String(512), nullable=False)
+    length_seconds = Column(Float, nullable=False)
 
     user = relationship("User", back_populates="sessions")
     stats = relationship("Stats", back_populates="session",
