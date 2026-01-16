@@ -7,7 +7,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 from config import config
 from logging_config import configure_logging
-from backend.server_app.rest_api.auth_routes import auth_api
+from server_app.rest_api.auth_routes import auth_api
 from server_app.socket_api.audio import AudioNamespace
 from database.models import init_db
 

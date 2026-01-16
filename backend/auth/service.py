@@ -23,6 +23,9 @@ UNAUTHORIZED_CODE = 401
 NOT_FOUND_CODE = 404
 CONFLICT_CODE = 409
 
+MIN_USERNAME_LENGTH = 3
+MAX_USERNAME_LENGTH = 32
+ALLOWED_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
 MIN_PASSWORD_LENGTH = 8
 REQUIRE_UPPERCASE = True
 REQUIRE_LOWERCASE = True
@@ -93,7 +96,28 @@ def validate_password(password: str) -> Tuple[bool, str]:
         return False, "Password must contain at least one digit"
 
     if REQUIRE_SPECIAL and not any(c in SPECIAL_CHARACTERS for c in password):
-        return False, "Password must contain at least one special character" + SPECIAL_CHARACTERS
+        return False, f"Password must contain at least one special character from: {SPECIAL_CHARACTERS}"
+
+    return True, ""
+
+
+def validate_username(username: str) -> Tuple[bool, str]:
+    """Validate username meets requirements.
+    
+    Args:
+        username (str): The username to validate.
+        
+    Returns:
+        Tuple[bool, str]: (is_valid, error_message)
+    """
+    if not username or len(username) < MIN_USERNAME_LENGTH:
+        return False, f"Username must be at least {MIN_USERNAME_LENGTH} characters long"
+
+    if len(username) > MAX_USERNAME_LENGTH:
+        return False, f"Username must not exceed {MAX_USERNAME_LENGTH} characters"
+
+    if not all(c in ALLOWED_CHARS for c in username):
+        return False, "Username can only contain letters, numbers, hyphens, and underscores"
 
     return True, ""
 
@@ -150,31 +174,41 @@ def signup(username: str, password: str) -> Tuple[dict, int]:
         logger.warning("Sign up failed: Missing required fields")
         return jsonify({"error": "Missing required fields"}), BAD_REQUEST_CODE
 
+    # Validate username
+    is_valid, error_msg = validate_username(username)
+    if not is_valid:
+        logger.warning("Sign up failed: Invalid username - %s", error_msg)
+        return jsonify({"error": error_msg}), BAD_REQUEST_CODE
+
     # Validate password strength
     is_valid, error_msg = validate_password(password)
     if not is_valid:
         logger.warning("Sign up failed for user %s: %s", username, error_msg)
         return jsonify({"error": error_msg}), BAD_REQUEST_CODE
 
-    with get_session() as db:
-        # Check if username already exists
-        existing_user = db.query(User).filter_by(username=username).first()
-        if existing_user:
-            logger.warning("Sign up failed for user %s: Username already exists", username)
-            return jsonify({"error": "Username already exists"}), CONFLICT_CODE
+    try:
+        with get_session() as db:
+            # Check if username already exists
+            existing_user = db.query(User).filter_by(username=username).first()
+            if existing_user:
+                logger.warning("Sign up failed for user %s: Username already exists", username)
+                return jsonify({"error": "Username already exists"}), CONFLICT_CODE
 
-        # Create new user
-        hashed_password = hash_password(password)
-        new_user = User(
-            username=username,
-            password_encrypted=hashed_password,
-            created_at=datetime.now(UTC)
-        )
+            # Create new user
+            hashed_password = hash_password(password)
+            new_user = User(
+                username=username,
+                password_encrypted=hashed_password,
+                created_at=datetime.now(UTC)
+            )
 
-        db.add(new_user)
-        db.flush()  # Ensure new_user.id is available
-        user_id = new_user.id
-        db.commit()
+            db.add(new_user)
+            db.flush()  # Ensure new_user.id is available
+            user_id = new_user.id
+            db.commit()
+    except Exception as e:
+        logger.exception("Error during signup for user %s: %s", username, e)
+        return jsonify({"error": "Internal server error"}), 500
 
     session_token = create_session(user_id)
     logger.info("User %s signed up successfully", username)
@@ -240,6 +274,7 @@ def get_current_user(session_token: str) -> Tuple[dict, int]:
         "created_at": user.created_at.isoformat() if user.created_at else None
     }), SUCCESS_CODE
 
+
 def change_password(session_token: str, current_password: str, new_password: str) -> Tuple[dict, int]:
     """Change the password for a user.
 
@@ -260,41 +295,45 @@ def change_password(session_token: str, current_password: str, new_password: str
         logger.warning("Change password failed: Invalid session token")
         return jsonify({"error": "Invalid or expired session token"}), UNAUTHORIZED_CODE
 
-    with get_session() as db:
-        user: Optional[User] = db.query(User).filter_by(id=user_id).first()
+    try:
+        with get_session() as db:
+            user: Optional[User] = db.query(User).filter_by(id=user_id).first()
 
-        if not user:
-            logger.warning("Change password failed: User %s not found", user_id)
-            return jsonify({"error": "User not found"}), NOT_FOUND_CODE
+            if not user:
+                logger.warning("Change password failed: User %s not found", user_id)
+                return jsonify({"error": "User not found"}), NOT_FOUND_CODE
 
-        # Verify current password
-        if not verify_password(user.password_encrypted, current_password):
-            logger.warning("Change password failed for user %s: Invalid current password", user_id)
-            return jsonify({"error": "Invalid current password"}), UNAUTHORIZED_CODE
+            # Verify current password
+            if not verify_password(user.password_encrypted, current_password):
+                logger.warning("Change password failed for user %s: Invalid current password", user_id)
+                return jsonify({"error": "Invalid current password"}), UNAUTHORIZED_CODE
 
-        # Check if new password is different from current
-        if current_password == new_password:
-            logger.warning("Change password failed for user %s: New password same as current", user_id)
-            return jsonify(
-                {"error": "New password must be different from current password"}
-            ), BAD_REQUEST_CODE
+            # Check if new password is different from current
+            if current_password == new_password:
+                logger.warning("Change password failed for user %s: New password same as current", user_id)
+                return jsonify(
+                    {"error": "New password must be different from current password"}
+                ), BAD_REQUEST_CODE
 
-        # Validate new password strength
-        is_valid, error_msg = validate_password(new_password)
-        if not is_valid:
-            logger.warning("Change password failed for user %s: %s", user_id, error_msg)
-            return jsonify({"error": error_msg}), BAD_REQUEST_CODE
+            # Validate new password strength
+            is_valid, error_msg = validate_password(new_password)
+            if not is_valid:
+                logger.warning("Change password failed for user %s: %s", user_id, error_msg)
+                return jsonify({"error": error_msg}), BAD_REQUEST_CODE
 
-        # Update password
-        user.password_encrypted = hash_password(new_password)
-        db.commit()
+            # Update password
+            user.password_encrypted = hash_password(new_password)
+            db.commit()
+    except Exception as e:
+        logger.exception("Error changing password for user %s: %s", user_id, e)
+        return jsonify({"error": "Internal server error"}), 500
 
     logger.info("User %s changed password successfully", user_id)
     return jsonify({"message": "Password changed successfully"}), SUCCESS_CODE
 
 
 def delete_account(session_token: str, password: str) -> Tuple[dict, int]:
-    """Delete a user account.
+    """Delete a user account and invalidate all their sessions.
 
     Args:
         session_token (str): The session token of the authenticated user.
@@ -312,21 +351,25 @@ def delete_account(session_token: str, password: str) -> Tuple[dict, int]:
         logger.warning("Delete account failed: Invalid session token")
         return jsonify({"error": "Invalid or expired session token"}), UNAUTHORIZED_CODE
 
-    with get_session() as db:
-        user: Optional[User] = db.query(User).filter_by(id=user_id).first()
+    try:
+        with get_session() as db:
+            user: Optional[User] = db.query(User).filter_by(id=user_id).first()
 
-        if not user:
-            logger.warning("Delete account failed: User %s not found", user_id)
-            return jsonify({"error": "User not found"}), NOT_FOUND_CODE
+            if not user:
+                logger.warning("Delete account failed: User %s not found", user_id)
+                return jsonify({"error": "User not found"}), NOT_FOUND_CODE
 
-        # Verify password
-        if not verify_password(user.password_encrypted, password):
-            logger.warning("Delete account failed for user %s: Invalid password", user_id)
-            return jsonify({"error": "Invalid password"}), UNAUTHORIZED_CODE
+            # Verify password
+            if not verify_password(user.password_encrypted, password):
+                logger.warning("Delete account failed for user %s: Invalid password", user_id)
+                return jsonify({"error": "Invalid password"}), UNAUTHORIZED_CODE
 
-        # Delete user
-        db.delete(user)
-        db.commit()
+            # Delete user
+            db.delete(user)
+            db.commit()
+    except Exception as e:
+        logger.exception("Error deleting account for user %s: %s", user_id, e)
+        return jsonify({"error": "Internal server error"}), 500
 
     # Invalidate session
     invalidate_session(session_token)
