@@ -7,7 +7,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 from config import config
 from logging_config import configure_logging
-from server_app.rest_api.routes import placeholder_api
+from server_app.rest_api.auth_routes import auth_api
 from server_app.socket_api.audio import AudioNamespace
 from database.models import init_db
 
@@ -30,7 +30,7 @@ def create_app():
     init_db()
 
     # Register HTTP blueprints, Socket.IO namespaces and handlers
-    flask_app.register_blueprint(placeholder_api)
+    flask_app.register_blueprint(auth_api)
     socketio.on_namespace(AudioNamespace("/audio"))
 
     socketio.init_app(flask_app)
