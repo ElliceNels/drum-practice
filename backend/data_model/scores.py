@@ -9,6 +9,7 @@ class QualityScores:
     """
     Data Transfer Object for tempo quality scores.
     
+    All fields are required.
     Each score is a normalized value between 0 and 1, where 0 is bad and 1 is excellent.
     
     Attributes:
