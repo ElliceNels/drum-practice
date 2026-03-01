@@ -266,3 +266,7 @@ coverage.xml
 test_audio_files/
 
 *.db
+
+# Vite
+dist-ssr
+*.local
