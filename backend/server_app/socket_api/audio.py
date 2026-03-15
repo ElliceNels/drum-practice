@@ -1,5 +1,6 @@
 """Module defining the Audio Socket.IO namespace."""
 import logging
+from dataclasses import asdict
 from flask_socketio import Namespace, emit
 from audio_processing.online import OnlineAubioProcessor
 from audio_processing.offline import OfflineAudioProcessor
@@ -58,14 +59,30 @@ class AudioNamespace(Namespace):
             else:
                 logger.info("[PROC] Using client-specified target BPM: %.2f", target_bpm)
 
-            logger.debug("[PROC] Calculating performance rank...")
-            rank = self.offline_processor.performance_to_rank(bpm_arr, target_bpm=target_bpm)
-            if rank:
-                logger.info("[PROC] Performance analysis complete - Rank: %d, Description: %s", rank[0], rank[1])
-                logger.info("[SEND] Performance summary to client")
-                emit("performance_summary", {"rank": rank[0], "description": rank[1]})
-            else:
-                logger.error("[ERROR] Failed to calculate performance rank")
+            logger.debug("[PROC] Calculating statistics and scores...")
+            stats = self.offline_processor.calculate_statistics(bpm_arr, target_bpm)
+            scores = self.offline_processor.calculate_scores(
+                mean_bpm=stats.mean_bpm,
+                std_dev=stats.std_dev,
+                cv=stats.variance_coefficient,
+                percentage=stats.percentage_within_threshold,
+                target_bpm=stats.target_bpm
+            )
+            rank_num, rank_desc = self.offline_processor.scores_to_rank(
+                accuracy=scores.accuracy,
+                stability=scores.stability,
+                consistency=scores.consistency,
+                threshold=scores.threshold
+            )
+
+            logger.info("[PROC] Performance analysis complete - Rank: %d, Description: %s", rank_num, rank_desc)
+            logger.info("[SEND] Performance summary to client")
+            emit("performance_summary", {
+                "rank": rank_num,
+                "description": rank_desc,
+                "scores": asdict(scores),
+                "stats": asdict(stats),
+            })
 
             # Send acknowledgement back to client
             return {"success": True, "message": "Audio file processed successfully"}

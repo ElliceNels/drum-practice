@@ -136,6 +136,48 @@ export default function RecordPage() {
             </p>
           )}
         </div>
+
+        {/* Results */}
+        {status === "done" && summary && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mt-6 space-y-6">
+            {/* Target & Mean BPM */}
+            <div className="flex justify-around text-center">
+              <div>
+                <p className="text-3xl font-bold text-slate-800">
+                  {summary.stats.target_bpm.toFixed(0)}
+                </p>
+                <p className="text-sm text-slate-500">Target BPM</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-slate-800">
+                  {summary.stats.mean_bpm.toFixed(1)}
+                </p>
+                <p className="text-sm text-slate-500">Your Mean BPM</p>
+              </div>
+            </div>
+
+            {/* Score breakdown */}
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <h2 className="text-sm font-semibold text-slate-700">Score Breakdown</h2>
+              {[
+                { label: "Accuracy", desc: "How close your tempo was to the target", value: summary.scores.accuracy },
+                { label: "Stability", desc: "How steady your tempo stayed over time", value: summary.scores.stability },
+                { label: "Consistency", desc: "How even your beat-to-beat timing was", value: summary.scores.consistency },
+                { label: "Threshold", desc: "How many beats landed within the allowed window", value: summary.scores.threshold },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{s.label}</p>
+                    <p className="text-xs text-slate-400">{s.desc}</p>
+                  </div>
+                  <p className="text-lg font-bold text-slate-800">
+                    {(s.value * 100).toFixed(0)}%
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
