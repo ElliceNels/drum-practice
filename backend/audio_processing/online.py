@@ -125,7 +125,7 @@ class OnlineAubioProcessor:
                 "bpm": self.detected_bpm,
                 "mean_bpm": self.mean_bpm,
                 "tempo_match": tempo_match,
-                "deviation": abs(self.detected_bpm - self.desired_bpm) if self.mean_bpm and self.desired_bpm else "ajskdajsndaj"
+                "deviation": abs(self.detected_bpm - self.desired_bpm) if self.detected_bpm and self.desired_bpm else None
             }
             results.append(result)
 

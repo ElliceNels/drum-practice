@@ -54,7 +54,7 @@ class AudioNamespace(Namespace):
             # Use desired BPM if set, otherwise use mean of detected BPM
             target_bpm = self.online_processor.desired_bpm
             if target_bpm is None:
-                target_bpm = self.offline_processor.calculate_mean_tempo(bpm_arr)
+                target_bpm = float(bpm_arr.mean())
                 logger.info("[PROC] No desired BPM set, using detected mean BPM: %.2f", target_bpm)
             else:
                 logger.info("[PROC] Using client-specified target BPM: %.2f", target_bpm)
