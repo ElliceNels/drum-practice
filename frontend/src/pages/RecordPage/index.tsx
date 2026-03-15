@@ -19,24 +19,28 @@ export default function RecordPage() {
 
   async function handleSave(filename: string) {
     if (!summary) return;
+    let sessionId: number | null = null;
     try {
-      await saveSession({
+      const res = await saveSession({
         file_location: `${filename}.wav`,
         length_seconds: lengthSeconds,
-        stats: summary.stats,
+        stats: summary.stats as unknown as Record<string, number | string>,
         score: {
           ...summary.scores,
           rank: summary.rank,
           rank_description: summary.description,
         },
       });
+      sessionId = res.session_id;
       downloadWav(filename);
-      setSaveState("saved");
     } catch {
       downloadWav(filename);
-      setSaveState("saved");
     }
     setShowSaveModal(false);
+    reset();
+    if (sessionId) {
+      navigate(`/summary/${sessionId}`);
+    }
   }
 
   function handleDiscard() {
@@ -84,6 +88,7 @@ export default function RecordPage() {
 
       {/* Main */}
       <main className="max-w-md mx-auto mt-12 px-4">
+        {status !== "done" && (
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
           {/* Status */}
           <p className="text-center text-sm font-medium text-slate-600 capitalize">
@@ -91,35 +96,59 @@ export default function RecordPage() {
             {status === "connecting" && "Connecting..."}
             {status === "recording" && "Recording..."}
             {status === "analysing" && "Analysing performance..."}
-            {status === "done" && summary && `Rank: ${summary.rank}/10 — ${summary.description}`}
+            {status === "done" && "Analysis complete"}
             {status === "error" && (error || "An error occurred")}
           </p>
 
-          {/* Tempo input */}
+          {/* Mode selector */}
           {(status === "idle" || status === "done" || status === "error") && (
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={useTempo}
-                  onChange={(e) => setUseTempo(e.target.checked)}
-                />
-                Set tempo
-              </label>
-              {useTempo && (
-                <div className="flex items-center gap-1">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Current Mode
+              </p>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                   <input
-                    type="number"
-                    min={MIN_TEMPO_BPM}
-                    max={MAX_TEMPO_BPM}
-                    value={tempoInput}
-                    onChange={(e) => setTempoInput(e.target.value)}
-                    className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    type="radio"
+                    name="tempo-mode"
+                    checked={!useTempo}
+                    onChange={() => setUseTempo(false)}
                   />
-                  <span className="text-sm text-slate-500">BPM</span>
-                </div>
-              )}
+                  Freeplay
+                </label>
+
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tempo-mode"
+                    checked={useTempo}
+                    onChange={() => setUseTempo(true)}
+                  />
+                  Match Tempo
+                </label>
+
+                {useTempo && (
+                  <div className="flex items-center gap-1 ml-6">
+                    <input
+                      type="number"
+                      min={MIN_TEMPO_BPM}
+                      max={MAX_TEMPO_BPM}
+                      value={tempoInput}
+                      onChange={(e) => setTempoInput(e.target.value)}
+                      className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-500">BPM</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-400">
+                {useTempo
+                  ? "Performance is scored against the target BPM set above."
+                  : "The starting tempo becomes the baseline. Measures how consistently time is kept."}
+              </p>
             </div>
           )}
 
@@ -169,10 +198,17 @@ export default function RecordPage() {
             </p>
           )}
         </div>
+        )}
 
         {/* Results */}
         {status === "done" && summary && (
           <div className="bg-white rounded-2xl shadow-lg p-6 mt-6 space-y-6">
+            {/* Rank */}
+            <div className="text-center">
+              <p className="text-4xl font-bold text-slate-800">{summary.rank}/10</p>
+              <p className="text-sm text-slate-500">{summary.description}</p>
+            </div>
+
             {/* Target & Mean BPM */}
             <div className="flex justify-around text-center">
               <div>

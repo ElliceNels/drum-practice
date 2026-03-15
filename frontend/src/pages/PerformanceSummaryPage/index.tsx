@@ -78,81 +78,79 @@ export default function PerformanceSummaryPage() {
 
         {session && (
           <>
-            {/* Overview card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-500">
-                  {formatDate(session.recorded_at)}
-                </p>
-                <p className="text-sm text-slate-500">
-                  {Math.round(session.length_seconds)}s
-                </p>
-              </div>
+            {/* Session heading */}
+            <div className="text-center">
+              <h2 className="text-lg font-bold text-slate-800">{session.file_location}</h2>
+              <p className="text-sm text-slate-500">
+                {formatDate(session.recorded_at)} · {Math.round(session.length_seconds)}s
+              </p>
+            </div>
 
-              {/* Score */}
+            {/* Rank + BPM overview */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
               {session.score && (
-                <div className="text-center space-y-1">
-                  <p className="text-4xl font-bold text-slate-800">
-                    {session.score.rank}/10
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {session.score.rank_description}
-                  </p>
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-slate-800">{session.score.rank}/10</p>
+                  <p className="text-sm text-slate-500">{session.score.rank_description}</p>
+                </div>
+              )}
+
+              {session.stats && (
+                <div className="flex justify-around text-center">
+                  <div>
+                    <p className="text-3xl font-bold text-slate-800">
+                      {session.stats.target_bpm.toFixed(0)}
+                    </p>
+                    <p className="text-sm text-slate-500">Target BPM</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-slate-800">
+                      {session.stats.mean_bpm.toFixed(1)}
+                    </p>
+                    <p className="text-sm text-slate-500">Mean BPM</p>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Stats */}
-            {session.stats && (
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h2 className="text-sm font-semibold text-slate-700 mb-3">
-                  Tempo Statistics
-                </h2>
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <dt className="text-slate-500">Target BPM</dt>
-                  <dd className="text-slate-800 font-medium">{session.stats.target_bpm}</dd>
-
-                  <dt className="text-slate-500">Mean BPM</dt>
-                  <dd className="text-slate-800 font-medium">{session.stats.mean_bpm.toFixed(1)}</dd>
-
-                  <dt className="text-slate-500">Median BPM</dt>
-                  <dd className="text-slate-800 font-medium">{session.stats.median_bpm.toFixed(1)}</dd>
-
-                  <dt className="text-slate-500">Min / Max</dt>
-                  <dd className="text-slate-800 font-medium">
-                    {session.stats.min_bpm.toFixed(1)} / {session.stats.max_bpm.toFixed(1)}
-                  </dd>
-
-                  <dt className="text-slate-500">Std Dev</dt>
-                  <dd className="text-slate-800 font-medium">{session.stats.std_dev.toFixed(2)}</dd>
-
-                  <dt className="text-slate-500">Within Threshold</dt>
-                  <dd className="text-slate-800 font-medium">
-                    {(session.stats.percentage_within_threshold * 100).toFixed(1)}%
-                  </dd>
-                </dl>
+            {/* Score breakdown */}
+            {session.score && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-3">
+                <h2 className="text-sm font-semibold text-slate-700">Score Breakdown</h2>
+                {[
+                  { label: "Accuracy", desc: "How close the tempo was to the target", value: session.score.accuracy },
+                  { label: "Stability", desc: "How steady the tempo stayed over time", value: session.score.stability },
+                  { label: "Consistency", desc: "How even the beat-to-beat timing was", value: session.score.consistency },
+                  { label: "Threshold", desc: "How many beats landed within the allowed window", value: session.score.threshold },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{s.label}</p>
+                      <p className="text-xs text-slate-400">{s.desc}</p>
+                    </div>
+                    <p className="text-lg font-bold text-slate-800">
+                      {(s.value * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Score breakdown */}
-            {session.score && (
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h2 className="text-sm font-semibold text-slate-700 mb-3">
-                  Score Breakdown
-                </h2>
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <dt className="text-slate-500">Accuracy</dt>
-                  <dd className="text-slate-800 font-medium">{session.score.accuracy.toFixed(2)}</dd>
-
-                  <dt className="text-slate-500">Stability</dt>
-                  <dd className="text-slate-800 font-medium">{session.score.stability.toFixed(2)}</dd>
-
-                  <dt className="text-slate-500">Consistency</dt>
-                  <dd className="text-slate-800 font-medium">{session.score.consistency.toFixed(2)}</dd>
-
-                  <dt className="text-slate-500">Threshold</dt>
-                  <dd className="text-slate-800 font-medium">{session.score.threshold.toFixed(2)}</dd>
-                </dl>
+            {/* Tempo statistics */}
+            {session.stats && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 space-y-3">
+                <h2 className="text-sm font-semibold text-slate-700">Tempo Statistics</h2>
+                {[
+                  { label: "Target Tempo", value: `${session.stats.target_bpm.toFixed(1)} BPM` },
+                  { label: "Mean Tempo", value: `${session.stats.mean_bpm.toFixed(1)} BPM` },
+                  { label: "Median Tempo", value: `${session.stats.median_bpm.toFixed(1)} BPM` },
+                  { label: "Range", value: `${session.stats.min_bpm.toFixed(1)} – ${session.stats.max_bpm.toFixed(1)} BPM` },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">{s.label}</span>
+                    <span className="text-slate-800 font-medium">{s.value}</span>
+                  </div>
+                ))}
               </div>
             )}
 
