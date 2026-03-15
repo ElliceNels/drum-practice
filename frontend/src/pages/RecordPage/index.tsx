@@ -2,16 +2,48 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
+import { saveSession } from "../../lib/sessionService";
+import { SaveModal } from "../../components/SaveModal";
 import { MIN_TEMPO_BPM, MAX_TEMPO_BPM } from "../../constants/audio";
 
 export default function RecordPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { status, error, summary, start, stop, reset } = useAudioRecorder();
+  const { status, error, summary, lengthSeconds, start, stop, reset, downloadWav } = useAudioRecorder();
 
   const [useTempo, setUseTempo] = useState(false);
   const [tempoInput, setTempoInput] = useState("120");
   const [tempoError, setTempoError] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveState, setSaveState] = useState<"unsaved" | "saved" | "discarded">("unsaved");
+
+  async function handleSave(filename: string) {
+    if (!summary) return;
+    try {
+      await saveSession({
+        file_location: `${filename}.wav`,
+        length_seconds: lengthSeconds,
+        stats: summary.stats,
+        score: {
+          ...summary.scores,
+          rank: summary.rank,
+          rank_description: summary.description,
+        },
+      });
+      downloadWav(filename);
+      setSaveState("saved");
+    } catch {
+      downloadWav(filename);
+      setSaveState("saved");
+    }
+    setShowSaveModal(false);
+  }
+
+  function handleDiscard() {
+    if (!window.confirm("Are you sure? This recording will be lost.")) return;
+    reset();
+    setSaveState("unsaved");
+  }
 
   async function handleStart() {
     const tempo = useTempo ? parseFloat(tempoInput) : undefined;
@@ -24,6 +56,7 @@ export default function RecordPage() {
       }
     }
 
+    setSaveState("unsaved");
     await start(tempo);
   }
 
@@ -101,8 +134,8 @@ export default function RecordPage() {
             {(status === "idle" || status === "done" || status === "error") && (
               <button
                 onClick={handleStart}
-                className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm font-medium
-                           hover:bg-blue-700 transition-colors"
+                className="bg-red-600 text-white rounded-lg px-6 py-2 text-sm font-medium
+                           hover:bg-red-700 transition-colors"
               >
                 Start Recording
               </button>
@@ -111,8 +144,8 @@ export default function RecordPage() {
             {status === "recording" && (
               <button
                 onClick={stop}
-                className="bg-red-600 text-white rounded-lg px-6 py-2 text-sm font-medium
-                           hover:bg-red-700 transition-colors"
+                className="bg-red-800 text-white rounded-lg px-6 py-2 text-sm font-medium
+                           hover:bg-red-900 transition-colors"
               >
                 Stop Recording
               </button>
@@ -176,9 +209,37 @@ export default function RecordPage() {
                 </div>
               ))}
             </div>
+
+            {/* Save / Discard buttons */}
+            {saveState === "unsaved" && (
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium
+                             hover:bg-blue-700 transition-colors"
+                >
+                  Save Session
+                </button>
+                <button
+                  onClick={handleDiscard}
+                  className="flex-1 bg-slate-200 text-slate-700 rounded-lg py-2 text-sm font-medium
+                             hover:bg-slate-300 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            )}
+
+            {saveState === "saved" && (
+              <p className="text-xs text-slate-400 text-center pt-2">Session saved.</p>
+            )}
           </div>
         )}
       </main>
+
+      {showSaveModal && (
+        <SaveModal onSave={handleSave} onDiscard={() => setShowSaveModal(false)} />
+      )}
     </div>
   );
 }

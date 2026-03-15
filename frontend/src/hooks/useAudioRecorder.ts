@@ -5,7 +5,7 @@
  */
 
 import { useRef, useState, useCallback } from "react";
-import { SAMPLE_RATE, REVOKE_TIMEOUT_MS } from "../constants/audio";
+import { SAMPLE_RATE } from "../constants/audio";
 import {
   connectToSocket,
   disconnectFromSocket,
@@ -28,19 +28,25 @@ interface UseAudioRecorderReturn {
   status: RecorderStatus;
   error: string | null;
   summary: PerformanceSummary | null;
+  wavBlob: Blob | null;
+  lengthSeconds: number;
   start: (tempo?: number) => Promise<void>;
   stop: () => Promise<void>;
   reset: () => void;
+  downloadWav: (filename: string) => void;
 }
 
 export function useAudioRecorder(): UseAudioRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PerformanceSummary | null>(null);
+  const [wavBlob, setWavBlob] = useState<Blob | null>(null);
+  const [lengthSeconds, setLengthSeconds] = useState(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
   const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const startTimeRef = useRef<number>(0);
   const chunksRef = useRef<Float32Array[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -105,6 +111,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       micSourceRef.current = source;
       source.connect(worklet);
 
+      startTimeRef.current = Date.now();
       setStatus("recording");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start recording");
@@ -133,12 +140,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
     micSourceRef.current = null;
 
+    setLengthSeconds((Date.now() - startTimeRef.current) / 1000);
     setStatus("analysing");
 
     // Merge chunks and build WAV
     const merged = mergeFloat32Arrays(chunksRef.current);
     const sampleRate = audioCtxRef.current?.sampleRate ?? SAMPLE_RATE;
     const wavBlob = buildWavFile(merged, sampleRate);
+
+    // Store blob for later download
+    setWavBlob(wavBlob);
 
     // Send full file to server
     try {
@@ -151,23 +162,27 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       return;
     }
 
-    // Download locally
+    // Status stays "analysing" until performance_summary arrives via socket callback
+  }, []);
+
+  const downloadWav = useCallback((filename: string) => {
+    if (!wavBlob) return;
     const url = URL.createObjectURL(wavBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "recording.wav";
+    a.download = filename.endsWith(".wav") ? filename : `${filename}.wav`;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), REVOKE_TIMEOUT_MS);
-
-    // Status stays "analysing" until performance_summary arrives via socket callback
-  }, []);
+    setTimeout(() => URL.revokeObjectURL(url), 6000);
+  }, [wavBlob]);
 
   const reset = useCallback(() => {
     disconnectFromSocket();
     setStatus("idle");
     setError(null);
     setSummary(null);
+    setWavBlob(null);
+    setLengthSeconds(0);
   }, []);
 
-  return { status, error, summary, start, stop, reset };
+  return { status, error, summary, wavBlob, lengthSeconds, start, stop, reset, downloadWav };
 }
