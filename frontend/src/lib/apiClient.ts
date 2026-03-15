@@ -38,7 +38,8 @@ export async function apiClient<T>(
     window.dispatchEvent(new Event("unauthorized"));
   }
 
-  const data = await response.json();
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
 
   if (!response.ok) {
     throw new Error(data.error || "Request failed");
