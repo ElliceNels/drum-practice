@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
 import { saveSession } from "../../lib/sessionService";
-import { SaveModal } from "../../components/SaveModal";
 import { MIN_TEMPO_BPM, MAX_TEMPO_BPM } from "../../constants/audio";
 
 export default function RecordPage() {
@@ -14,15 +13,18 @@ export default function RecordPage() {
   const [useTempo, setUseTempo] = useState(false);
   const [tempoInput, setTempoInput] = useState("120");
   const [tempoError, setTempoError] = useState<string | null>(null);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saveState, setSaveState] = useState<"unsaved" | "saved" | "discarded">("unsaved");
+  const [saveState, setSaveState] = useState<"unsaved" | "saving" | "saved" | "discarded">("unsaved");
 
-  async function handleSave(filename: string) {
+  async function handleSave() {
     if (!summary) return;
-    let sessionId: number | null = null;
+
+    // Open OS file picker — get the actual saved filename
+    const savedName = await downloadWav("recording");
+    if (!savedName) return; // User cancelled
+
     try {
       const res = await saveSession({
-        file_location: `${filename}.wav`,
+        file_location: savedName,
         length_seconds: lengthSeconds,
         stats: summary.stats as unknown as Record<string, number | string>,
         score: {
@@ -31,15 +33,10 @@ export default function RecordPage() {
           rank_description: summary.description,
         },
       });
-      sessionId = res.session_id;
-      downloadWav(filename);
+      navigate(`/summary/${res.session_id}`);
     } catch {
-      downloadWav(filename);
-    }
-    setShowSaveModal(false);
-    reset();
-    if (sessionId) {
-      navigate(`/summary/${sessionId}`);
+      // Save to DB failed — go back to results
+      setSaveState("unsaved");
     }
   }
 
@@ -96,12 +93,11 @@ export default function RecordPage() {
             {status === "connecting" && "Connecting..."}
             {status === "recording" && "Recording..."}
             {status === "analysing" && "Analysing performance..."}
-            {status === "done" && "Analysis complete"}
             {status === "error" && (error || "An error occurred")}
           </p>
 
           {/* Mode selector */}
-          {(status === "idle" || status === "done" || status === "error") && (
+          {(status === "idle" || status === "error") && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Current Mode
@@ -160,7 +156,7 @@ export default function RecordPage() {
 
           {/* Controls */}
           <div className="flex justify-center gap-4">
-            {(status === "idle" || status === "done" || status === "error") && (
+            {(status === "idle" || status === "error") && (
               <button
                 onClick={handleStart}
                 className="bg-red-600 text-white rounded-lg px-6 py-2 text-sm font-medium
@@ -180,7 +176,7 @@ export default function RecordPage() {
               </button>
             )}
 
-            {(status === "done" || status === "error") && (
+            {status === "error" && (
               <button
                 onClick={reset}
                 className="bg-slate-200 text-slate-700 rounded-lg px-6 py-2 text-sm font-medium
@@ -250,7 +246,7 @@ export default function RecordPage() {
             {saveState === "unsaved" && (
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowSaveModal(true)}
+                  onClick={handleSave}
                   className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium
                              hover:bg-blue-700 transition-colors"
                 >
@@ -273,9 +269,6 @@ export default function RecordPage() {
         )}
       </main>
 
-      {showSaveModal && (
-        <SaveModal onSave={handleSave} onDiscard={() => setShowSaveModal(false)} />
-      )}
     </div>
   );
 }

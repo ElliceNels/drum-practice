@@ -33,7 +33,7 @@ interface UseAudioRecorderReturn {
   start: (tempo?: number) => Promise<void>;
   stop: () => Promise<void>;
   reset: () => void;
-  downloadWav: (filename: string) => void;
+  downloadWav: (filename: string) => Promise<string>;
 }
 
 export function useAudioRecorder(): UseAudioRecorderReturn {
@@ -165,14 +165,36 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     // Status stays "analysing" until performance_summary arrives via socket callback
   }, []);
 
-  const downloadWav = useCallback((filename: string) => {
-    if (!wavBlob) return;
+  const downloadWav = useCallback(async (filename: string): Promise<string> => {
+    if (!wavBlob) return filename;
+    const safeName = filename.endsWith(".wav") ? filename : `${filename}.wav`;
+
+    // Try native file picker (returns actual saved filename)
+    if ("showSaveFilePicker" in window) {
+      try {
+        const handle = await (window as unknown as { showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle> })
+          .showSaveFilePicker({
+            suggestedName: safeName,
+            types: [{ description: "WAV Audio", accept: { "audio/wav": [".wav"] } }],
+          });
+        const writable = await handle.createWritable();
+        await writable.write(wavBlob);
+        await writable.close();
+        return handle.name;
+      } catch {
+        // User cancelled the picker
+        return "";
+      }
+    }
+
+    // Fallback for browsers without File System Access API
     const url = URL.createObjectURL(wavBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename.endsWith(".wav") ? filename : `${filename}.wav`;
+    a.download = safeName;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 6000);
+    return safeName;
   }, [wavBlob]);
 
   const reset = useCallback(() => {
