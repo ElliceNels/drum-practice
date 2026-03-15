@@ -79,7 +79,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       // Set up AudioContext + Worklet
       if (!audioCtxRef.current) {
         audioCtxRef.current = new AudioContext({ sampleRate: SAMPLE_RATE });
-        await audioCtxRef.current.audioWorklet.addModule("./pcm_processor.js");
+        await audioCtxRef.current.audioWorklet.addModule("/pcm_processor.js");
       }
 
       if (audioCtxRef.current.state === "suspended") {

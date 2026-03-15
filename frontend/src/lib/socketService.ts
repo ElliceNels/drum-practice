@@ -15,7 +15,7 @@ export function connectToSocket(
   onChunkResponse: (data: ChunkResponse) => void,
   onPerformanceSummary: (data: PerformanceSummary) => void,
 ): Promise<void> {
-  if (socket && socket.connected) {
+  if (socket) {
     disconnectFromSocket();
   }
 
@@ -56,6 +56,7 @@ export function connectToSocket(
 export function disconnectFromSocket(): void {
   if (!socket) return;
   socket.off("connect");
+  socket.off("connect_error");
   socket.off("chunk_response");
   socket.off("performance_summary");
   socket.disconnect();

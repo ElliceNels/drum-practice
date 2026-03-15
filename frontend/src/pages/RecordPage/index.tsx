@@ -11,12 +11,15 @@ export default function RecordPage() {
 
   const [useTempo, setUseTempo] = useState(false);
   const [tempoInput, setTempoInput] = useState("120");
+  const [tempoError, setTempoError] = useState<string | null>(null);
 
   async function handleStart() {
     const tempo = useTempo ? parseFloat(tempoInput) : undefined;
+    setTempoError(null);
 
     if (tempo !== undefined) {
       if (!Number.isFinite(tempo) || tempo < MIN_TEMPO_BPM || tempo > MAX_TEMPO_BPM) {
+        setTempoError(`Tempo must be between ${MIN_TEMPO_BPM} and ${MAX_TEMPO_BPM} BPM.`);
         return;
       }
     }
@@ -85,6 +88,12 @@ export default function RecordPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {tempoError && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">
+              {tempoError}
+            </p>
           )}
 
           {/* Controls */}

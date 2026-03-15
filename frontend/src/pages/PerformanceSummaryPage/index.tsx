@@ -16,7 +16,13 @@ export default function PerformanceSummaryPage() {
 
   useEffect(() => {
     if (!id) return;
-    getSession(Number(id))
+    const sessionId = Number(id);
+    if (!Number.isFinite(sessionId)) {
+      setError("Invalid session identifier.");
+      setLoading(false);
+      return;
+    }
+    getSession(sessionId)
       .then(setSession)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load session"))
       .finally(() => setLoading(false));
