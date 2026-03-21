@@ -40,7 +40,7 @@ export default function PerformanceSummaryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100/80">
       {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-slate-800">Performance Summary</h1>
