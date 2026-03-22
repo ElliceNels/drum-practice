@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useParams } from "react-router-dom";
+import { NavBar } from "../../components/NavBar";
 import { getSession } from "../../lib/sessionService";
 import { DVPlaceholder } from "../../components/DVPlaceholder";
 import type { SessionDetail } from "../../data_model/session";
 
 export default function PerformanceSummaryPage() {
-  const { user, logout } = useAuth();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,31 +39,7 @@ export default function PerformanceSummaryPage() {
 
   return (
     <div className="min-h-screen bg-slate-100/80">
-      {/* Header */}
-      <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-800">Performance Summary</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{user?.username}</span>
-          <button
-            onClick={() => navigate("/history")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            History
-          </button>
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Record
-          </button>
-          <button
-            onClick={logout}
-            className="text-sm text-slate-500 hover:text-slate-700"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
+      <NavBar />
 
       <main className="max-w-2xl mx-auto mt-8 px-4 space-y-6">
         {loading && <p className="text-sm text-slate-500 text-center">Loading...</p>}

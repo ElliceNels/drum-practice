@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { NavBar } from "../../components/NavBar";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
 import { saveSession } from "../../lib/sessionService";
 import { MIN_TEMPO_BPM, MAX_TEMPO_BPM } from "../../constants/audio";
 
 export default function RecordPage() {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { status, error, summary, lengthSeconds, start, stop, reset, downloadWav } = useAudioRecorder();
 
@@ -63,25 +62,7 @@ export default function RecordPage() {
 
   return (
     <div className="min-h-screen bg-slate-100/80">
-      {/* Header */}
-      <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-800">Drum Practice</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{user?.username}</span>
-          <button
-            onClick={() => navigate("/history")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            History
-          </button>
-          <button
-            onClick={logout}
-            className="text-sm text-slate-500 hover:text-slate-700"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
+      <NavBar />
 
       {/* Main */}
       <main className="max-w-md mx-auto mt-12 px-4">
