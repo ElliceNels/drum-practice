@@ -21,6 +21,7 @@ class AudioNamespace(Namespace):
     def on_connect(self):
         """Handle a new client connection."""
         logger.info("[SOCKET] Client connected to /audio namespace")
+        self.online_processor.reset()
 
     def on_disconnect(self):
         """Handle client disconnection."""

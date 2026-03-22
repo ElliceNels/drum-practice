@@ -37,6 +37,17 @@ class OnlineAubioProcessor:
         # Internal leftover buffer for frame alignment
         self._leftover = np.array([], dtype=np.float32)
 
+    def reset(self):
+        """Reset all state for a fresh recording session."""
+        self.onset = aubio.onset("default", self.buffer_size, self.hop_size, self.samplerate)
+        self.tempo_detector = aubio.tempo("default", self.buffer_size, self.hop_size, self.samplerate)
+        self.last_beat_time = None
+        self.detected_bpm = None
+        self.bpms = []
+        self.mean_bpm = None
+        self.desired_bpm = None
+        self._leftover = np.array([], dtype=np.float32)
+
     def set_desired_tempo(self, bpm):
         """Set the desired BPM for tempo matching."""
         self.desired_bpm = float(bpm)
