@@ -7,6 +7,9 @@ export interface SessionScoreSummary {
   rank: number;
   rank_description: string;
   accuracy: number | null;
+  stability: number | null;
+  consistency: number | null;
+  threshold: number | null;
 }
 
 export interface SessionSummary {
