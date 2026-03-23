@@ -128,21 +128,25 @@ levels of rhythmic performance.
         return SECONDS_IN_MINUTE / np.mean(np.diff(beat_times))
 
     @staticmethod
-    def _correct_half_double_time(bpm_array: np.ndarray):
+    def _correct_half_double_time(bpm_array: np.ndarray, anchor: float = None):
         """
         Correct BPM array for half-time and double-time errors.
 
+        Uses anchor BPM as reference if provided (e.g. target BPM in match-tempo mode),
+        otherwise falls back to the median of the array.
+
         Args:
             bpm_array (np.ndarray): Array of BPM values.
+            anchor (float, optional): Reference BPM to correct towards.
         Returns:
             np.ndarray: Corrected BPM array.
         """
         if len(bpm_array) == 0:
             return bpm_array
 
-        median: float = np.median(bpm_array)
+        ref: float = anchor if anchor is not None else float(np.median(bpm_array))
         candidates = np.stack([bpm_array, bpm_array / 2, bpm_array * 2], axis=1)
-        distances = np.abs(candidates - median)
+        distances = np.abs(candidates - ref)
         best_indices = np.argmin(distances, axis=1)
         corrected = candidates[np.arange(len(bpm_array)), best_indices]
         return corrected
@@ -180,12 +184,13 @@ levels of rhythmic performance.
         return medfilt(bpm_array, kernel_size=kernel_size)
 
     @staticmethod
-    def calculate_bpm_array(beat_times: np.ndarray) -> np.ndarray:
+    def calculate_bpm_array(beat_times: np.ndarray, target_bpm: float = None) -> np.ndarray:
         """
         Calculate instantaneous BPM array from beat times by filtering only realistic inter-beat intervals.
 
         Args:
             beat_times (np.ndarray): Array of detected beat times in seconds.
+            target_bpm (float, optional): Target BPM for half/double-time correction anchor.
         Returns:
             np.ndarray: Array of BPM values corresponding to each beat interval.
         """
@@ -207,8 +212,8 @@ levels of rhythmic performance.
             )
         inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
 
-        # 3. Half-time and double-time correction
-        corrected_bpm_array = OfflineAudioProcessor._correct_half_double_time(inst_bpm_array)
+        # 3. Half-time and double-time correction (use target BPM as anchor when available)
+        corrected_bpm_array = OfflineAudioProcessor._correct_half_double_time(inst_bpm_array, anchor=target_bpm)
 
         # 4. Median Window Smoothing
         smoothed_bpm_array = OfflineAudioProcessor._median_smooth(

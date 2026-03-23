@@ -51,6 +51,6 @@ export interface SessionDetail {
 export interface SaveSessionPayload {
   file_location: string;
   length_seconds: number;
-  stats?: Record<string, number>;
-  score?: Record<string, number | string>;
+  stats?: SessionStats;
+  score?: SessionScore;
 }

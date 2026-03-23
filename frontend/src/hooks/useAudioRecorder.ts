@@ -28,19 +28,25 @@ interface UseAudioRecorderReturn {
   status: RecorderStatus;
   error: string | null;
   summary: PerformanceSummary | null;
+  wavBlob: Blob | null;
+  lengthSeconds: number;
   start: (tempo?: number) => Promise<void>;
   stop: () => Promise<void>;
   reset: () => void;
+  downloadWav: (filename: string) => Promise<string>;
 }
 
 export function useAudioRecorder(): UseAudioRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PerformanceSummary | null>(null);
+  const [wavBlob, setWavBlob] = useState<Blob | null>(null);
+  const [lengthSeconds, setLengthSeconds] = useState(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
   const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const startTimeRef = useRef<number>(0);
   const chunksRef = useRef<Float32Array[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -105,6 +111,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       micSourceRef.current = source;
       source.connect(worklet);
 
+      startTimeRef.current = Date.now();
       setStatus("recording");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start recording");
@@ -133,12 +140,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
     micSourceRef.current = null;
 
+    setLengthSeconds((Date.now() - startTimeRef.current) / 1000);
     setStatus("analysing");
 
     // Merge chunks and build WAV
     const merged = mergeFloat32Arrays(chunksRef.current);
     const sampleRate = audioCtxRef.current?.sampleRate ?? SAMPLE_RATE;
     const wavBlob = buildWavFile(merged, sampleRate);
+
+    // Store blob for later download
+    setWavBlob(wavBlob);
 
     // Send full file to server
     try {
@@ -151,23 +162,51 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       return;
     }
 
-    // Download locally
+    // Status stays "analysing" until performance_summary arrives via socket callback
+  }, []);
+
+  const downloadWav = useCallback(async (filename: string): Promise<string> => {
+    if (!wavBlob) return "";
+    const safeName = filename.endsWith(".wav") ? filename : `${filename}.wav`;
+
+    // Try native file picker (returns actual saved filename)
+    if ("showSaveFilePicker" in window) {
+      try {
+        const handle = await (window as unknown as { showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle> })
+          .showSaveFilePicker({
+            suggestedName: safeName,
+            types: [{ description: "WAV Audio", accept: { "audio/wav": [".wav"] } }],
+          });
+        const writable = await handle.createWritable();
+        await writable.write(wavBlob);
+        await writable.close();
+        return handle.name;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return ""; // User cancelled the picker
+        }
+        throw err; // Surface real write errors
+      }
+    }
+
+    // Fallback for browsers without File System Access API
     const url = URL.createObjectURL(wavBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "recording.wav";
+    a.download = safeName;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), REVOKE_TIMEOUT_MS);
-
-    // Status stays "analysing" until performance_summary arrives via socket callback
-  }, []);
+    return safeName;
+  }, [wavBlob]);
 
   const reset = useCallback(() => {
     disconnectFromSocket();
     setStatus("idle");
     setError(null);
     setSummary(null);
+    setWavBlob(null);
+    setLengthSeconds(0);
   }, []);
 
-  return { status, error, summary, start, stop, reset };
+  return { status, error, summary, wavBlob, lengthSeconds, start, stop, reset, downloadWav };
 }
