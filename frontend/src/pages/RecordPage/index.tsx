@@ -25,7 +25,7 @@ export default function RecordPage() {
       const res = await saveSession({
         file_location: savedName,
         length_seconds: lengthSeconds,
-        stats: summary.stats as unknown as Record<string, number | string>,
+        stats: summary.stats,
         score: {
           ...summary.scores,
           rank: summary.rank,

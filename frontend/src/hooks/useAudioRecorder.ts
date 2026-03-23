@@ -5,7 +5,7 @@
  */
 
 import { useRef, useState, useCallback } from "react";
-import { SAMPLE_RATE } from "../constants/audio";
+import { SAMPLE_RATE, REVOKE_TIMEOUT_MS } from "../constants/audio";
 import {
   connectToSocket,
   disconnectFromSocket,
@@ -166,7 +166,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   }, []);
 
   const downloadWav = useCallback(async (filename: string): Promise<string> => {
-    if (!wavBlob) return filename;
+    if (!wavBlob) return "";
     const safeName = filename.endsWith(".wav") ? filename : `${filename}.wav`;
 
     // Try native file picker (returns actual saved filename)
@@ -181,9 +181,11 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         await writable.write(wavBlob);
         await writable.close();
         return handle.name;
-      } catch {
-        // User cancelled the picker
-        return "";
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return ""; // User cancelled the picker
+        }
+        throw err; // Surface real write errors
       }
     }
 
@@ -193,7 +195,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     a.href = url;
     a.download = safeName;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 6000);
+    setTimeout(() => URL.revokeObjectURL(url), REVOKE_TIMEOUT_MS);
     return safeName;
   }, [wavBlob]);
 

@@ -10,7 +10,7 @@ export interface ChunkResponse {
   bpm: number | null;
   mean_bpm: number | null;
   tempo_match: "on" | "ahead" | "behind" | null;
-  deviation: number | string;
+  deviation: number | null;
 }
 
 export interface PerformanceScores {
