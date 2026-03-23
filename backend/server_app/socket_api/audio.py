@@ -40,20 +40,20 @@ class AudioNamespace(Namespace):
             emit("chunk_response", results[-1])
 
     def on_receive_audio_file(self, data):
-        """Handle incoming full audio file."""
+        """Handle incoming full audio file (WAV bytes)."""
         try:
             logger.info("[RECV] Full audio file from client, size: %d bytes", len(data))
             logger.debug("[PROC] Loading audio from bytes...")
-            # Process the audio file with offline audio processing
             audio_data = self.offline_processor.load_audio_from_bytes(data)
             logger.debug("[PROC] Analyzing audio for beats and downbeats...")
             beats, downbeats = self.offline_processor.analyze_audio(audio_data)
             logger.debug("[PROC] Detected %d beats", len(beats))
-            logger.debug("[PROC] Calculating BPM array from beat intervals...")
-            bpm_arr = self.offline_processor.calculate_bpm_array(beats)
 
-            # Use desired BPM if set, otherwise use mean of detected BPM
+            # Resolve target BPM before correction so it can anchor half/double-time fix
             target_bpm = self.online_processor.desired_bpm
+            logger.debug("[PROC] Calculating BPM array from beat intervals...")
+            bpm_arr = self.offline_processor.calculate_bpm_array(beats, target_bpm=target_bpm)
+
             if target_bpm is None:
                 target_bpm = float(bpm_arr.mean())
                 logger.info("[PROC] No desired BPM set, using detected mean BPM: %.2f", target_bpm)
@@ -85,7 +85,6 @@ class AudioNamespace(Namespace):
                 "stats": asdict(stats),
             })
 
-            # Send acknowledgement back to client
             return {"success": True, "message": "Audio file processed successfully"}
         except Exception as e:
             logger.error("[ERROR] Exception while processing audio file: %s", str(e))
