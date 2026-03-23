@@ -14,7 +14,7 @@ import {
   sendTempoToServer,
 } from "../lib/socketService";
 import { buildWavFile, mergeFloat32Arrays } from "../lib/wavUtils";
-import type { PerformanceSummary } from "../data_model/recording";
+import type { PerformanceSummary, ChunkResponse } from "../data_model/recording";
 
 export type RecorderStatus =
   | "idle"
@@ -24,12 +24,20 @@ export type RecorderStatus =
   | "done"
   | "error";
 
+interface LiveFeedback {
+  tempoMatch: "on" | "ahead" | "behind" | null;
+  currentBpm: number | null;
+  meanBpm: number | null;
+  deviation: number | null;
+}
+
 interface UseAudioRecorderReturn {
   status: RecorderStatus;
   error: string | null;
   summary: PerformanceSummary | null;
   wavBlob: Blob | null;
   lengthSeconds: number;
+  live: LiveFeedback;
   start: (tempo?: number) => Promise<void>;
   stop: () => Promise<void>;
   reset: () => void;
@@ -42,6 +50,9 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const [summary, setSummary] = useState<PerformanceSummary | null>(null);
   const [wavBlob, setWavBlob] = useState<Blob | null>(null);
   const [lengthSeconds, setLengthSeconds] = useState(0);
+  const [live, setLive] = useState<LiveFeedback>({
+    tempoMatch: null, currentBpm: null, meanBpm: null, deviation: null,
+  });
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
@@ -53,12 +64,22 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const start = useCallback(async (tempo?: number) => {
     setError(null);
     setSummary(null);
+    setLive({ tempoMatch: null, currentBpm: null, meanBpm: null, deviation: null });
     setStatus("connecting");
 
     try {
       // Connect socket with callbacks
       await connectToSocket(
-        () => {},
+        (chunk: ChunkResponse) => {
+          if (chunk.beat) {
+            setLive({
+              tempoMatch: chunk.tempo_match,
+              currentBpm: chunk.bpm,
+              meanBpm: chunk.mean_bpm,
+              deviation: typeof chunk.deviation === "number" ? chunk.deviation : null,
+            });
+          }
+        },
         (data) => {
           setSummary(data);
           setStatus("done");
@@ -206,7 +227,8 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     setSummary(null);
     setWavBlob(null);
     setLengthSeconds(0);
+    setLive({ tempoMatch: null, currentBpm: null, meanBpm: null, deviation: null });
   }, []);
 
-  return { status, error, summary, wavBlob, lengthSeconds, start, stop, reset, downloadWav };
+  return { status, error, summary, wavBlob, lengthSeconds, live, start, stop, reset, downloadWav };
 }
