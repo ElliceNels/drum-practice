@@ -64,6 +64,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const start = useCallback(async (tempo?: number) => {
     setError(null);
     setSummary(null);
+    setLive({ tempoMatch: null, currentBpm: null, meanBpm: null, deviation: null });
     setStatus("connecting");
 
     try {

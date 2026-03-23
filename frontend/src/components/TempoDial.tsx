@@ -63,7 +63,7 @@ export function TempoDial({ tempoMatch, deviation, currentBpm, targetBpm }: Temp
         valueTextFontSize="24"
         textColor="#1e293b"
       />
-      <div className="flex justify-between w-125 -mt-2 px-8">
+      <div className="flex justify-between w-full -mt-2 px-8">
         <span className="text-xs text-slate-400">{lowLabel}</span>
         <span className="text-xs text-slate-400">{highLabel}</span>
       </div>
