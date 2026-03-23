@@ -20,7 +20,9 @@ logger.debug("Configuration Loaded: %s", config)
 socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode="eventlet",
-    max_http_buffer_size=5_000_000,  # allow ~5MB uploads for full WAV payloads
+    max_http_buffer_size=600_000_000,  # ~600MB for up to 50 min recordings
+    ping_timeout=120,
+    ping_interval=25,
 )
 
 def create_app():
