@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../components/NavBar";
+import { TempoDial } from "../../components/TempoDial";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
 import { saveSession } from "../../lib/sessionService";
 import { MIN_TEMPO_BPM, MAX_TEMPO_BPM } from "../../constants/audio";
 
 export default function RecordPage() {
   const navigate = useNavigate();
-  const { status, error, summary, lengthSeconds, start, stop, reset, downloadWav } = useAudioRecorder();
+  const { status, error, summary, lengthSeconds, live, start, stop, reset, downloadWav } = useAudioRecorder();
 
   const [useTempo, setUseTempo] = useState(false);
   const [tempoInput, setTempoInput] = useState("120");
@@ -65,7 +66,7 @@ export default function RecordPage() {
       <NavBar />
 
       {/* Main */}
-      <main className="max-w-md mx-auto mt-12 px-4">
+      <main className="max-w-2xl mx-auto mt-12 px-4">
         {status !== "done" && (
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
           {/* Status */}
@@ -133,6 +134,16 @@ export default function RecordPage() {
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">
               {tempoError}
             </p>
+          )}
+
+          {/* Live tempo dial — visible during recording */}
+          {status === "recording" && (
+            <TempoDial
+              tempoMatch={live.tempoMatch}
+              deviation={live.deviation}
+              currentBpm={live.currentBpm}
+              targetBpm={useTempo ? parseFloat(tempoInput) : live.meanBpm}
+            />
           )}
 
           {/* Controls */}
