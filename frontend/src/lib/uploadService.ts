@@ -5,7 +5,7 @@
 import { getToken } from "./apiClient";
 import type { PerformanceSummary } from "../data_model/recording";
 
-const ACCEPTED_FORMATS = ".wav,.mp3,.mp4,.m4a,.ogg,.flac";
+const ACCEPTED_FORMATS = ".wav,.mp3,.mp4,.m4a,.ogg,.flac,.mov";
 
 export { ACCEPTED_FORMATS };
 

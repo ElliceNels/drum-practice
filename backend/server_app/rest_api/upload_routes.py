@@ -1,5 +1,7 @@
 """Module defining file upload REST API routes for offline analysis."""
 import logging
+import tempfile
+import os
 from dataclasses import asdict
 from flask import Blueprint, request, jsonify
 
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 upload_api = Blueprint("upload_api", __name__, url_prefix="/upload")
 
-ALLOWED_EXTENSIONS = {"wav", "mp3", "mp4", "m4a", "ogg", "flac"}
+ALLOWED_EXTENSIONS = {"wav", "mp3", "mp4", "m4a", "ogg", "flac", "mov"}
 MAX_FILE_SIZE = 600 * 1024 * 1024  # 600MB
 
 
@@ -81,7 +83,14 @@ def analyze_upload():
 
         logger.info("[UPLOAD] Processing uploaded file: %s (%d bytes)", file.filename, len(audio_bytes))
 
-        audio_data = processor.load_audio_from_bytes(audio_bytes)
+        # Write to temp file so audioread can use system decoders for non-WAV formats (MOV, MP4, etc.)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+        try:
+            tmp.write(audio_bytes)
+            tmp.close()
+            audio_data = processor.load_audio(tmp.name)
+        finally:
+            os.unlink(tmp.name)
         beats, downbeats = processor.analyze_audio(audio_data)
 
         bpm_arr, time_mids = processor.calculate_bpm_array(beats, target_bpm=target_bpm)
