@@ -73,7 +73,11 @@ export default function RecordPage() {
     if (metronomeEnabled && tempo) {
       startMetronome(tempo);
     }
-    await start(tempo);
+    try {
+      await start(tempo);
+    } catch {
+      stopMetronome();
+    }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -86,6 +90,14 @@ export default function RecordPage() {
     const tempo = useTempo ? parseFloat(tempoInput) : undefined;
     setUploadError(null);
     setUploadSummary(null);
+
+    if (tempo !== undefined) {
+      if (!Number.isFinite(tempo) || tempo < MIN_TEMPO_BPM || tempo > MAX_TEMPO_BPM) {
+        setUploadError(`Tempo must be between ${MIN_TEMPO_BPM} and ${MAX_TEMPO_BPM} BPM.`);
+        return;
+      }
+    }
+
     setUploading(true);
 
     try {
@@ -227,7 +239,7 @@ export default function RecordPage() {
 
             {status === "recording" && (
               <button
-                onClick={() => { stopMetronome(); stop(); }}
+                onClick={async () => { stopMetronome(); await stop(); }}
                 className="bg-red-800 text-white rounded-lg px-6 py-2 text-sm font-medium
                            hover:bg-red-900 transition-colors"
               >

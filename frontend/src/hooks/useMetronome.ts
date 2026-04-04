@@ -3,8 +3,7 @@ import { useRef, useCallback, useEffect } from "react";
 /**
  * Metronome hook using Web Audio API.
  * Plays a short click at the given BPM using an OscillatorNode.
- * Uses a separate AudioContext so clicks go to speakers but aren't
- * captured by getUserMedia (echo cancellation is off).
+ * Uses a separate AudioContext dedicated to metronome playback.
  */
 export function useMetronome() {
   const ctxRef = useRef<AudioContext | null>(null);

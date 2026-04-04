@@ -126,6 +126,6 @@ def analyze_upload():
             },
         }), 200
 
-    except Exception as e:
-        logger.error("[UPLOAD] Error processing file: %s", str(e))
-        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+    except Exception:
+        logger.exception("[UPLOAD] Error processing file")
+        return jsonify({"error": "Analysis failed"}), 500
