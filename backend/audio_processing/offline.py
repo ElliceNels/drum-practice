@@ -234,8 +234,12 @@ levels of rhythmic performance.
             end_time = valid_midpoints[-1] - TRIM_SECONDS
             if start_time < end_time:
                 trim_mask = (valid_midpoints >= start_time) & (valid_midpoints <= end_time)
-                averaged_bpm_array = averaged_bpm_array[trim_mask]
-                valid_midpoints = valid_midpoints[trim_mask]
+                trimmed_bpm = averaged_bpm_array[trim_mask]
+                trimmed_mids = valid_midpoints[trim_mask]
+                # Only apply if at least one sample remains; otherwise keep untrimmed
+                if len(trimmed_bpm) > 0:
+                    averaged_bpm_array = trimmed_bpm
+                    valid_midpoints = trimmed_mids
 
         return averaged_bpm_array, valid_midpoints
 

@@ -36,25 +36,28 @@ export default function HistoricalDataPage() {
 
       <main className="max-w-2xl mx-auto mt-8 px-4 space-y-6">
         {/* Rank history chart */}
-        {!loading && sessions.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">Session Trends</h2>
-            <RankHistoryChart
-              sessions={sessions
-                .filter((s) => s.score_summary && s.recorded_at)
-                .map((s) => ({
-                  session_id: s.session_id,
-                  recorded_at: s.recorded_at!,
-                  rank: s.score_summary!.rank,
-                  accuracy: s.score_summary!.accuracy,
-                  stability: s.score_summary!.stability,
-                  consistency: s.score_summary!.consistency,
-                  threshold: s.score_summary!.threshold,
-                }))}
-              onSessionClick={(id) => navigate(`/summary/${id}`)}
-            />
-          </div>
-        )}
+        {(() => {
+          const chartSessions = sessions
+            .filter((s) => s.score_summary && s.recorded_at)
+            .map((s) => ({
+              session_id: s.session_id,
+              recorded_at: s.recorded_at!,
+              rank: s.score_summary!.rank,
+              accuracy: s.score_summary!.accuracy,
+              stability: s.score_summary!.stability,
+              consistency: s.score_summary!.consistency,
+              threshold: s.score_summary!.threshold,
+            }));
+          return !loading && chartSessions.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-sm font-semibold text-slate-700 mb-3">Session Trends</h2>
+              <RankHistoryChart
+                sessions={chartSessions}
+                onSessionClick={(id) => navigate(`/summary/${id}`)}
+              />
+            </div>
+          );
+        })()}
 
         {/* Session list */}
         {loading && <p className="text-sm text-slate-500 text-center">Loading...</p>}
