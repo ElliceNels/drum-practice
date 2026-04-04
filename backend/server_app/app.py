@@ -9,6 +9,7 @@ from config import config
 from logging_config import configure_logging
 from server_app.rest_api.auth_routes import auth_api
 from server_app.rest_api.practice_session_routes import session_api
+from server_app.rest_api.upload_routes import upload_api
 from server_app.socket_api.audio import AudioNamespace
 from database.models import init_db
 
@@ -35,6 +36,7 @@ def create_app():
     # Register HTTP blueprints, Socket.IO namespaces and handlers
     flask_app.register_blueprint(auth_api)
     flask_app.register_blueprint(session_api)
+    flask_app.register_blueprint(upload_api)
     socketio.on_namespace(AudioNamespace("/audio"))
 
     socketio.init_app(flask_app)
