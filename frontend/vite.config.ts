@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:5000',
       '/sessions': 'http://localhost:5000',
+      '/upload': 'http://localhost:5000',
     },
   },
 })
