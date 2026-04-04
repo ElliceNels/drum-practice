@@ -31,11 +31,17 @@ export interface PerformanceStats {
   percentage_within_threshold: number;
 }
 
+export interface BpmTimeline {
+  bpm_array: number[];
+  time_midpoints: number[];
+}
+
 export interface PerformanceSummary {
   rank: number;
   description: string;
   scores: PerformanceScores;
   stats: PerformanceStats;
+  bpm_timeline?: BpmTimeline;
 }
 
 export interface LiveStats {

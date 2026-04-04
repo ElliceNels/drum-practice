@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { NavBar } from "../../components/NavBar";
 import { getSession } from "../../lib/sessionService";
-import { DVPlaceholder } from "../../components/DVPlaceholder";
+import { RadarChart } from "../../components/charts/RadarChart";
 import type { SessionDetail } from "../../data_model/session";
 
 export default function PerformanceSummaryPage() {
@@ -128,8 +128,13 @@ export default function PerformanceSummaryPage() {
               </div>
             )}
 
-            {/* DV Placeholder */}
-            <DVPlaceholder label="Tempo distribution chart" />
+            {/* Radar chart */}
+            {session.score && (
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h2 className="text-sm font-semibold text-slate-700 mb-2">Score Overview</h2>
+                <RadarChart scores={session.score} />
+              </div>
+            )}
           </>
         )}
       </main>

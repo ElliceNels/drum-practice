@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../components/NavBar";
 import { getSessions } from "../../lib/sessionService";
-import { DVPlaceholder } from "../../components/DVPlaceholder";
+import { RankHistoryChart } from "../../components/charts/RankHistoryChart";
 import type { SessionSummary } from "../../data_model/session";
 
 export default function HistoricalDataPage() {
@@ -35,8 +35,29 @@ export default function HistoricalDataPage() {
       <NavBar />
 
       <main className="max-w-2xl mx-auto mt-8 px-4 space-y-6">
-        {/* DV Placeholder */}
-        <DVPlaceholder label="Session trends over time" />
+        {/* Rank history chart */}
+        {(() => {
+          const chartSessions = sessions
+            .filter((s) => s.score_summary && s.recorded_at)
+            .map((s) => ({
+              session_id: s.session_id,
+              recorded_at: s.recorded_at!,
+              rank: s.score_summary!.rank,
+              accuracy: s.score_summary!.accuracy,
+              stability: s.score_summary!.stability,
+              consistency: s.score_summary!.consistency,
+              threshold: s.score_summary!.threshold,
+            }));
+          return !loading && chartSessions.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-sm font-semibold text-slate-700 mb-3">Session Trends</h2>
+              <RankHistoryChart
+                sessions={chartSessions}
+                onSessionClick={(id) => navigate(`/summary/${id}`)}
+              />
+            </div>
+          );
+        })()}
 
         {/* Session list */}
         {loading && <p className="text-sm text-slate-500 text-center">Loading...</p>}
@@ -66,7 +87,7 @@ export default function HistoricalDataPage() {
               </p>
               <p className="text-xs text-slate-500">
                 {Math.round(s.length_seconds)}s
-                {s.stats_summary?.target_bpm != null && ` · ${s.stats_summary.target_bpm} BPM target`}
+                {s.stats_summary?.target_bpm != null && ` · ${(Math.round(s.stats_summary.target_bpm * 2) / 2)} BPM target`}
               </p>
             </div>
             <div className="text-right">

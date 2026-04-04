@@ -5,6 +5,7 @@ import { TempoDial } from "../../components/TempoDial";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
 import { saveSession } from "../../lib/sessionService";
 import { MIN_TEMPO_BPM, MAX_TEMPO_BPM } from "../../constants/audio";
+import { BpmTimelineChart } from "../../components/charts/BpmTimelineChart";
 
 export default function RecordPage() {
   const navigate = useNavigate();
@@ -233,6 +234,18 @@ export default function RecordPage() {
                 </div>
               ))}
             </div>
+
+            {/* BPM timeline */}
+            {summary.bpm_timeline && (
+              <div className="border-t border-slate-100 pt-4">
+                <h2 className="text-sm font-semibold text-slate-700 mb-2">BPM Over Time</h2>
+                <BpmTimelineChart
+                  bpmArray={summary.bpm_timeline.bpm_array}
+                  timeMidpoints={summary.bpm_timeline.time_midpoints}
+                  targetBpm={summary.stats.target_bpm}
+                />
+              </div>
+            )}
 
             {/* Save / Discard buttons */}
             {saveState === "unsaved" && (

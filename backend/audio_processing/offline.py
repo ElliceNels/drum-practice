@@ -48,7 +48,7 @@ class OfflineAudioProcessor:
         """
         Initializes the OfflineAudioProcessor with BeatNet model and parameters.
 These parameters have been derived from empirical testing with a variety of musical recordings.
-These thresholds were found to provide reasonable discrimination between different 
+These thresholds were found to provide reasonable discrimination between different
 levels of rhythmic performance.
 
         Args:
@@ -184,7 +184,7 @@ levels of rhythmic performance.
         return medfilt(bpm_array, kernel_size=kernel_size)
 
     @staticmethod
-    def calculate_bpm_array(beat_times: np.ndarray, target_bpm: float = None) -> np.ndarray:
+    def calculate_bpm_array(beat_times: np.ndarray, target_bpm: float = None) -> tuple:
         """
         Calculate instantaneous BPM array from beat times by filtering only realistic inter-beat intervals.
 
@@ -192,18 +192,20 @@ levels of rhythmic performance.
             beat_times (np.ndarray): Array of detected beat times in seconds.
             target_bpm (float, optional): Target BPM for half/double-time correction anchor.
         Returns:
-            np.ndarray: Array of BPM values corresponding to each beat interval.
+            tuple: (bpm_array, time_midpoints) with matching lengths.
         """
         ibi: np.ndarray = np.diff(beat_times)
+        midpoints: np.ndarray = (beat_times[:-1] + beat_times[1:]) / 2
 
-        # 1. Filter out zero or near-zero intervals to avoid division by zero
+        # 1. Build a single validity mask
         epsilon = 1e-6
-        valid_ibi = ibi[ibi > epsilon]
+        min_ibi_threshold = SECONDS_IN_MINUTE / MAX_REALISTIC_BPM
+        max_ibi_threshold = SECONDS_IN_MINUTE / MIN_REALISTIC_BPM
 
-        # 2. Filter out unreasonably large intervals
-        min_ibi_threshold = SECONDS_IN_MINUTE / MAX_REALISTIC_BPM  # seconds
-        max_ibi_threshold = SECONDS_IN_MINUTE / MIN_REALISTIC_BPM  # seconds
-        valid_ibi = valid_ibi[(valid_ibi < max_ibi_threshold) & (valid_ibi > min_ibi_threshold)]
+        valid_mask = (ibi > epsilon) & (ibi > min_ibi_threshold) & (ibi < max_ibi_threshold)
+
+        valid_ibi = ibi[valid_mask]
+        valid_midpoints = midpoints[valid_mask]
 
         if len(valid_ibi) < 1:
             raise ValueError(
@@ -212,20 +214,34 @@ levels of rhythmic performance.
             )
         inst_bpm_array: np.ndarray = SECONDS_IN_MINUTE / valid_ibi
 
-        # 3. Half-time and double-time correction (use target BPM as anchor when available)
+        # 2. Half-time and double-time correction (use target BPM as anchor when available)
         corrected_bpm_array = OfflineAudioProcessor._correct_half_double_time(inst_bpm_array, anchor=target_bpm)
 
-        # 4. Median Window Smoothing
+        # 3. Median Window Smoothing
         smoothed_bpm_array = OfflineAudioProcessor._median_smooth(
-            corrected_bpm_array, kernel_size=3 # 3 for light smoothing
+            corrected_bpm_array, kernel_size=3
         )
 
-        # 5. Moving Average Smoothing
+        # 4. Moving Average Smoothing
         averaged_bpm_array = OfflineAudioProcessor._moving_average(
-            smoothed_bpm_array, window_size=5 # 5 for moderate smoothing
+            smoothed_bpm_array, window_size=5
         )
 
-        return averaged_bpm_array
+        # 5. Trim edges AFTER smoothing (moving average distorts first/last few values)
+        TRIM_SECONDS = 3.0
+        if len(valid_midpoints) > 0:
+            start_time = valid_midpoints[0] + TRIM_SECONDS
+            end_time = valid_midpoints[-1] - TRIM_SECONDS
+            if start_time < end_time:
+                trim_mask = (valid_midpoints >= start_time) & (valid_midpoints <= end_time)
+                trimmed_bpm = averaged_bpm_array[trim_mask]
+                trimmed_mids = valid_midpoints[trim_mask]
+                # Only apply if at least one sample remains; otherwise keep untrimmed
+                if len(trimmed_bpm) > 0:
+                    averaged_bpm_array = trimmed_bpm
+                    valid_midpoints = trimmed_mids
+
+        return averaged_bpm_array, valid_midpoints
 
     @staticmethod
     def calculate_time_midpoints(beat_times: np.ndarray) -> np.ndarray:
@@ -385,6 +401,6 @@ if __name__ == "__main__":
     processor = OfflineAudioProcessor()
     data = processor.load_audio(TEST_FILE)
     beats, dbeats = processor.analyze_audio(data)
-    bpm_arr = processor.calculate_bpm_array(beats)
+    bpm_arr, _ = processor.calculate_bpm_array(beats)
     rank = processor.performance_to_rank(bpm_arr, target_bpm=124.0)
     logger.info("Performance Rank: %d, Description: %s", rank[0], rank[1])

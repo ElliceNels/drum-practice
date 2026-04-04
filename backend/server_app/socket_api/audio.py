@@ -52,7 +52,7 @@ class AudioNamespace(Namespace):
             # Resolve target BPM before correction so it can anchor half/double-time fix
             target_bpm = self.online_processor.desired_bpm
             logger.debug("[PROC] Calculating BPM array from beat intervals...")
-            bpm_arr = self.offline_processor.calculate_bpm_array(beats, target_bpm=target_bpm)
+            bpm_arr, time_mids = self.offline_processor.calculate_bpm_array(beats, target_bpm=target_bpm)
 
             if target_bpm is None:
                 target_bpm = float(bpm_arr.mean())
@@ -83,6 +83,10 @@ class AudioNamespace(Namespace):
                 "description": rank_desc,
                 "scores": asdict(scores),
                 "stats": asdict(stats),
+                "bpm_timeline": {
+                    "bpm_array": bpm_arr.tolist(),
+                    "time_midpoints": time_mids.tolist(),
+                },
             })
 
             return {"success": True, "message": "Audio file processed successfully"}

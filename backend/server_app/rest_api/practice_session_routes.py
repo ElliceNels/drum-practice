@@ -295,7 +295,10 @@ def get_all_sessions():
             session_data["score_summary"] = {
                 "rank": session.score.rank,
                 "rank_description": session.score.rank_description,
-                "accuracy": score.get("accuracy")
+                "accuracy": score.get("accuracy"),
+                "stability": score.get("stability"),
+                "consistency": score.get("consistency"),
+                "threshold": score.get("threshold"),
             }
 
         sessions_list.append(session_data)
