@@ -101,11 +101,11 @@ cd frontend
 npm run dev
 ```
 
-Runs on `http://localhost:5173`. The Vite dev server proxies `/auth`, `/sessions`, and `/upload` requests to the backend.
+Runs on `http://localhost:5178`. The Vite dev server proxies `/auth`, `/sessions`, and `/upload` requests to the backend.
 
 ## Usage
 
-1. Open `http://localhost:5173`
+1. Open `http://localhost:5178`
 2. Sign up / log in
 3. Choose a mode:
    - **Freeplay** -- your starting tempo becomes the baseline
